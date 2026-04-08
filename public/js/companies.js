@@ -6,6 +6,8 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
   var _em = useState(false), editMode = _em[0], setEditMode = _em[1];
   var _ed = useState(null), editData = _ed[0], setEditData = _ed[1];
   var _ss = useState(false), showSearch = _ss[0], setShowSearch = _ss[1];
+  var _sm = useState(false), searchMode = _sm[0], setSearchMode = _sm[1];
+  var _sq = useState({}), searchQuery = _sq[0], setSearchQuery = _sq[1];
   var _f = useState({ q: "", status: "", industry: "", prefecture: "", city: "", dateFrom: "", dateTo: "" }), filters = _f[0], setFilters = _f[1];
   var _csv = useState(false), showCsv = _csv[0], setShowCsv = _csv[1];
   var _sav = useState(false), saving = _sav[0], setSaving = _sav[1];
@@ -25,6 +27,18 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
 
   // フィルタリング
   var filtered = companies.filter(function(c) {
+    // FM式フィールド内検索
+    var sq = searchQuery;
+    if (sq.name && !c.name.includes(sq.name) && !(c.nameKana || "").includes(sq.name)) return false;
+    if (sq.tel && !((c.phones || []).some(function(p) { return p.number.includes(sq.tel); }))) return false;
+    if (sq.prefecture && !(c.prefecture || "").includes(sq.prefecture)) return false;
+    if (sq.city && !(c.city || "").includes(sq.city)) return false;
+    if (sq.address && !(c.address || "").includes(sq.address)) return false;
+    if (sq.representative && !(c.representative || "").includes(sq.representative)) return false;
+    if (sq.industry && !(c.industry || "").includes(sq.industry) && !(c.industryDetail || "").includes(sq.industry)) return false;
+    if (sq.status && c.status !== sq.status) return false;
+    if (sq.memo && !(c.memo || "").includes(sq.memo)) return false;
+    // 従来の絞込フィルタも併用
     if (filters.q && !c.name.includes(filters.q) && !(c.nameKana || "").includes(filters.q) && !((c.phones || []).some(function(p) { return p.number.includes(filters.q); }))) return false;
     if (filters.status && c.status !== filters.status) return false;
     if (filters.industry && c.industry !== filters.industry) return false;
@@ -405,9 +419,14 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
   return h("div", { style: { display: "flex", flexDirection: "column", flex: 1, overflow: "hidden", height: "100%" } },
     // ツールバー
     h("div", { style: { background: "#1a1d27", borderBottom: "1px solid #2d3148", padding: "6px 16px", display: "flex", gap: 8, alignItems: "center", flexShrink: 0 } },
+      h("button", { className: "btn btn-sm " + (searchMode ? "btn-primary" : "btn-ghost"), onClick: function() {
+        if (searchMode) { setSearchQuery({}); setSearchMode(false); }
+        else { setSearchQuery({}); setSearchMode(true); }
+      } }, searchMode ? "検索解除" : "検索"),
+      Object.keys(searchQuery).filter(function(k) { return searchQuery[k]; }).length > 0 && h("button", { className: "btn btn-ghost btn-sm", style: { color: "#ef4444" }, onClick: function() { setSearchQuery({}); } }, "条件クリア"),
       h("button", { className: "btn btn-ghost btn-sm" + (showSearch ? " btn-primary" : ""), style: { position: "relative" },
         onClick: function() { setShowSearch(!showSearch); }
-      }, "検索・絞込",
+      }, "絞込",
         activeCount > 0 && h("span", { style: { position: "absolute", top: -5, right: -5, background: "#7c8cf8", color: "#fff", borderRadius: "50%", width: 17, height: 17, fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 } }, activeCount)
       ),
       h("div", { style: { flex: 1 } }),
@@ -423,7 +442,13 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
     h("div", { className: "main-content" },
       sidebar,
       h("div", { className: "content-area" },
-        view === "detail" ? (sel ? detail : h("div", { className: "empty-state" }, "企業を選択してください"))
+        searchMode ? h(SearchModeView, {
+          query: searchQuery,
+          onChange: setSearchQuery,
+          onSearch: function() { setSearchMode(false); },
+          onCancel: function() { setSearchQuery({}); setSearchMode(false); }
+        })
+        : view === "detail" ? (sel ? detail : h("div", { className: "empty-state" }, "企業を選択してください"))
         : view === "list" ? listView
         : newView
       )
@@ -585,6 +610,47 @@ function CsvModal({ onClose, onImport }) {
         h("button", { className: "btn btn-secondary", onClick: onClose }, "キャンセル"),
         preview && preview.length > 0 && h("button", { className: "btn btn-primary", onClick: function() { onImport(preview); } }, preview.length + "件をインポート")
       )
+    )
+  );
+}
+
+// ---- FM式検索モードビュー ----
+function SearchModeView({ query, onChange, onSearch, onCancel }) {
+  var s = function(k) { return function(v) { onChange(function(p) { var r = Object.assign({}, p); r[k] = v; return r; }); }; };
+
+  var handleKeyDown = function(e) { if (e.key === "Enter") onSearch(); if (e.key === "Escape") onCancel(); };
+
+  return h("div", null,
+    h("div", { className: "card", style: { borderColor: "#7c8cf8", borderWidth: 2 } },
+      h("div", { className: "card-header" },
+        h("div", { style: { fontSize: 16, fontWeight: 700, color: "#7c8cf8" } }, "検索モード"),
+        h("div", { className: "text-xs text-muted" }, "検索したいフィールドにテキストを入力 → Enter で検索")
+      ),
+      h("div", { className: "form-row form-row-2" },
+        h(FormInput, { label: "企業名・カナ", value: query.name || "", onChange: s("name"), placeholder: "例: 山田建設" }),
+        h(FormInput, { label: "電話番号", value: query.tel || "", onChange: s("tel"), placeholder: "例: 06-1111" })
+      ),
+      h("div", { className: "form-row form-row-3" },
+        h(FormSelect, { label: "都道府県", options: PREFECTURES, value: query.prefecture || "", onChange: s("prefecture") }),
+        h(FormInput, { label: "市区町村", value: query.city || "", onChange: s("city"), placeholder: "例: 大阪市" }),
+        h(FormInput, { label: "番地・建物名", value: query.address || "", onChange: s("address") })
+      ),
+      h("div", { className: "form-row form-row-3" },
+        h(FormInput, { label: "代表者名", value: query.representative || "", onChange: s("representative") }),
+        h(FormSelect, { label: "顧客分類", options: STATUS_OPTIONS, value: query.status || "", onChange: s("status") }),
+        h(FormInput, { label: "業種", value: query.industry || "", onChange: s("industry"), placeholder: "例: ガテン系" })
+      ),
+      h("div", { className: "form-row" },
+        h(FormInput, { label: "備考メモ", value: query.memo || "", onChange: s("memo"), placeholder: "メモの内容で検索" })
+      ),
+      h("div", { className: "flex gap-12 mt-16" },
+        h("button", { className: "btn btn-primary", onClick: onSearch }, "検索する（Enter）"),
+        h("button", { className: "btn btn-secondary", onClick: onCancel }, "キャンセル（Esc）"),
+        h("button", { className: "btn btn-ghost", onClick: function() { onChange({}); } }, "条件クリア")
+      )
+    ),
+    h("div", { className: "text-muted text-sm mt-12", style: { textAlign: "center" } },
+      "複数フィールドに入力するとAND検索になります"
     )
   );
 }
