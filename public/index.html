@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CRM</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+<div id="root"></div>
+<script src="/js/api.js"></script>
+<script src="/js/components.js"></script>
+<script src="/js/dashboard.js"></script>
+<script src="/js/companies.js"></script>
+<script src="/js/deals.js"></script>
+<script src="/js/calendar.js"></script>
+<script src="/js/master.js"></script>
+<script>
+// ============================================================
+// App ルーター
+// ============================================================
+function App() {
+  var _page = useState("dashboard"), page = _page[0], setPage = _page[1];
+  var _cos = useState([]), companies = _cos[0], setCompanies = _cos[1];
+  var _sel = useState(null), selectedId = _sel[0], setSelectedId = _sel[1];
+  var _loading = useState(true), loading = _loading[0], setLoading = _loading[1];
+  var _err = useState(""), err = _err[0], setErr = _err[1];
+  var _agents = useState([]), agents = _agents[0], setAgents = _agents[1];
+  var _plans = useState([]), plans = _plans[0], setPlans = _plans[1];
+  var _credits = useState([]), creditCompanies = _credits[0], setCreditCompanies = _credits[1];
+  var _filters = useState([]), savedFilters = _filters[0], setSavedFilters = _filters[1];
+
+  // 初期データ読み込み
+  var loadAll = function() {
+    return Promise.all([
+      API.getCompanies(),
+      API.getAgents(),
+      API.getPlans(),
+      API.getCreditCompanies(),
+      API.getFilters()
+    ]).then(function(res) {
+      setCompanies(res[0]);
+      setAgents(res[1]);
+      setPlans(res[2]);
+      setCreditCompanies(res[3]);
+      setSavedFilters(res[4]);
+      if (!selectedId && res[0].length > 0) setSelectedId(res[0][0].id);
+      setLoading(false);
+    }).catch(function(e) {
+      // API接続できない場合はデモデータで表示
+      var demo = [
+        { id:"demo1", name:"株式会社山田建設", nameKana:"ヤマダケンセツ", prefecture:"大阪府", city:"大阪市北区", address:"梅田1-2-3", zip:"530-0001", url:"", representative:"山田太郎", status:"見込み", industry:"ガテン系", industryDetail:"", listCreatedDate:"2024-08-09", nextCallDate: todayStr(), nextCallMemo:"見積もり確認", memo:"定期訪問済み", callCount:5, phones:[{id:"p1",number:"06-1111-2222",type:"固定",label:"本社代表"},{id:"p2",number:"090-1234-5678",type:"携帯",label:"山田社長"}], activities:[{id:"a1",type:"コール",date:"2026-04-05",time:"14:30",agent:"佐藤",callType:"WEB提案完了",callResult:"話し込めず再コール",location:"",content:"担当者不在、折返し依頼"},{id:"a2",type:"アポ",date:"2026-03-28",time:"10:00",agent:"佐藤",callType:"",callResult:"",location:"本社",content:"見積もり提出"}], deals:[{id:"d1",planId:"",title:"HPプランB",status:"制作中",agent:"佐藤",contractDate:"2026-03-15",contractAmount:500000,paymentMethod:"信販",creditCompany:"オリコ",creditStatus:"承認",creditDate:"2026-03-18",creditAmount:500000,interviewDate:"2026-04-10",deliveryDate:"",cost:200000,grossProfit:300000,memo:""}] },
+        { id:"demo2", name:"有限会社鈴木電気", nameKana:"スズキデンキ", prefecture:"東京都", city:"渋谷区", address:"渋谷2-3-4", zip:"150-0001", url:"", representative:"鈴木一郎", status:"顧客", industry:"IT/通信", industryDetail:"", listCreatedDate:"2024-02-15", nextCallDate:"2026-04-06", nextCallMemo:"納品確認", memo:"来月再コール予定", callCount:12, phones:[{id:"p3",number:"03-3333-4444",type:"固定",label:"代表"}], activities:[{id:"a3",type:"コール",date:"2026-04-03",time:"11:00",agent:"田中",callType:"決裁者通話",callResult:"アポ取得",location:"",content:"来週訪問OK"}], deals:[{id:"d2",planId:"",title:"LPプランA",status:"納品済",agent:"田中",contractDate:"2026-02-01",contractAmount:300000,paymentMethod:"現金",creditCompany:"",creditStatus:"",creditDate:"",creditAmount:0,interviewDate:"2026-02-20",deliveryDate:"2026-03-10",cost:120000,grossProfit:180000,memo:""}] },
+        { id:"demo3", name:"株式会社田中商事", nameKana:"タナカショウジ", prefecture:"愛知県", city:"名古屋市中区", address:"栄3-4-5", zip:"460-0001", url:"", representative:"田中花子", status:"休眠", industry:"製造業", industryDetail:"", listCreatedDate:"2023-11-01", nextCallDate:"", nextCallMemo:"", memo:"半年後に再アプローチ", callCount:3, phones:[{id:"p4",number:"052-5555-6666",type:"固定",label:""}], activities:[], deals:[] }
+      ];
+      setCompanies(demo);
+      setAgents([{id:"ag1",name:"佐藤"},{id:"ag2",name:"田中"},{id:"ag3",name:"山田"}]);
+      setPlans([{id:"pl1",name:"HPプランA",category:"HP",price:300000,description:"基本プラン",active:true,sort_order:0},{id:"pl2",name:"HPプランB",category:"HP",price:500000,description:"スタンダード",active:true,sort_order:1},{id:"pl3",name:"LPプランA",category:"LP",price:150000,description:"LP制作",active:true,sort_order:2}]);
+      setCreditCompanies([{id:"cc1",name:"オリコ"},{id:"cc2",name:"アプラス"},{id:"cc3",name:"ジャックス"}]);
+      setSavedFilters([]);
+      setSelectedId("demo1");
+      setLoading(false);
+    });
+  };
+
+  useEffect(function() { loadAll(); }, []);
+
+  var reload = function() { loadAll(); };
+
+  var navigate = function(pageName, companyId) {
+    setPage(pageName);
+    if (companyId) setSelectedId(companyId);
+  };
+
+  var saveFilter = function(name, filters) {
+    API.saveFilter(name, filters).then(function() { reload(); });
+  };
+
+  var deleteFilter = function(id) {
+    API.deleteFilter(id).then(function() { reload(); });
+  };
+
+  // ローディング
+  if (loading) {
+    return h("div", { className: "loading" },
+      h("div", { className: "loading-spinner" }, "\u23F3"),
+      h("div", { className: "loading-text" }, "\u30C7\u30FC\u30BF\u3092\u8AAD\u307F\u8FBC\u3093\u3067\u3044\u307E\u3059...")
+    );
+  }
+
+  // エラー
+  if (err) {
+    return h("div", { className: "loading" },
+      h("div", { className: "loading-spinner" }, "\u26A0\uFE0F"),
+      h("div", { style: { color: "#ef4444", fontSize: 14 } }, "\u63A5\u7D9A\u30A8\u30E9\u30FC"),
+      h("div", { className: "text-muted text-sm" }, "\u30B5\u30FC\u30D0\u30FC\u306B\u63A5\u7D9A\u3067\u304D\u307E\u305B\u3093\u3002\u3057\u3070\u3089\u304F\u3057\u3066\u304B\u3089\u30EA\u30ED\u30FC\u30C9\u3057\u3066\u304F\u3060\u3055\u3044\u3002")
+    );
+  }
+
+  // ページ内容
+  var content;
+  if (page === "dashboard") {
+    content = h(DashboardPage, { onNavigate: navigate });
+  } else if (page === "companies") {
+    content = h(CompaniesPage, {
+      companies: companies, selectedId: selectedId,
+      onSelect: function(id) { setSelectedId(id); },
+      onReload: reload, agents: agents, plans: plans,
+      creditCompanies: creditCompanies,
+      savedFilters: savedFilters,
+      onSaveFilter: saveFilter,
+      onDeleteFilter: deleteFilter
+    });
+  } else if (page === "deals") {
+    content = h(DealsPage, {
+      agents: agents, plans: plans, creditCompanies: creditCompanies,
+      onNavigate: navigate
+    });
+  } else if (page === "calendar") {
+    content = h(CalendarPage, { onNavigate: navigate });
+  } else if (page === "master") {
+    content = h(MasterPage, {
+      plans: plans, agents: agents, creditCompanies: creditCompanies,
+      onReload: reload
+    });
+  }
+
+  return h("div", { className: "app" },
+    // ヘッダー
+    h("div", { className: "header" },
+      h("div", { className: "logo" }, "CRM"),
+      h("button", { className: "nav-btn" + (page === "dashboard" ? " active" : ""), onClick: function() { setPage("dashboard"); } }, "\u30C0\u30C3\u30B7\u30E5\u30DC\u30FC\u30C9"),
+      h("button", { className: "nav-btn" + (page === "companies" ? " active" : ""), onClick: function() { setPage("companies"); } }, "\u4F01\u696D\u7BA1\u7406"),
+      h("button", { className: "nav-btn" + (page === "deals" ? " active" : ""), onClick: function() { setPage("deals"); } }, "\u6848\u4EF6\u7BA1\u7406"),
+      h("button", { className: "nav-btn" + (page === "calendar" ? " active" : ""), onClick: function() { setPage("calendar"); } }, "\u30AB\u30EC\u30F3\u30C0\u30FC"),
+      h("button", { className: "nav-btn" + (page === "master" ? " active" : ""), onClick: function() { setPage("master"); } }, "\u30DE\u30B9\u30BF"),
+      h("div", { className: "nav-spacer" }),
+      h("button", { className: "btn btn-primary btn-sm", onClick: function() { setPage("companies"); } }, "+ \u65B0\u898F\u4F01\u696D")
+    ),
+    // コンテンツ
+    h("div", { style: { flex: 1, overflow: page === "companies" ? "hidden" : "auto", display: "flex", flexDirection: "column", padding: (page !== "companies" ? "20px" : "0") } },
+      content
+    )
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(h(App));
+</script>
+</body>
+</html>
