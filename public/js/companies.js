@@ -5,10 +5,9 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
   var _v = useState("detail"), view = _v[0], setView = _v[1];
   var _em = useState(false), editMode = _em[0], setEditMode = _em[1];
   var _ed = useState(null), editData = _ed[0], setEditData = _ed[1];
-  var _ss = useState(false), showSearch = _ss[0], setShowSearch = _ss[1];
   var _sm = useState(false), searchMode = _sm[0], setSearchMode = _sm[1];
   var _sq = useState({}), searchQuery = _sq[0], setSearchQuery = _sq[1];
-  var _f = useState({ q: "", status: "", industry: "", prefecture: "", city: "", dateFrom: "", dateTo: "" }), filters = _f[0], setFilters = _f[1];
+  var _actTab = useState("コール"), actTab = _actTab[0], setActTab = _actTab[1];
   var _csv = useState(false), showCsv = _csv[0], setShowCsv = _csv[1];
   var _sav = useState(false), saving = _sav[0], setSaving = _sav[1];
   var _cf = useState(false), showConfirm = _cf[0], setShowConfirm = _cf[1];
@@ -38,14 +37,12 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
     if (sq.industry && !(c.industry || "").includes(sq.industry) && !(c.industryDetail || "").includes(sq.industry)) return false;
     if (sq.status && c.status !== sq.status) return false;
     if (sq.memo && !(c.memo || "").includes(sq.memo)) return false;
-    // 従来の絞込フィルタも併用
-    if (filters.q && !c.name.includes(filters.q) && !(c.nameKana || "").includes(filters.q) && !((c.phones || []).some(function(p) { return p.number.includes(filters.q); }))) return false;
-    if (filters.status && c.status !== filters.status) return false;
-    if (filters.industry && c.industry !== filters.industry) return false;
-    if (filters.prefecture && c.prefecture !== filters.prefecture) return false;
-    if (filters.city && !(c.city || "").includes(filters.city)) return false;
-    if (filters.dateFrom && c.listCreatedDate && c.listCreatedDate < filters.dateFrom) return false;
-    if (filters.dateTo && c.listCreatedDate && c.listCreatedDate > filters.dateTo) return false;
+    // 営業行動での検索
+    if (sq.agent && !(c.activities || []).some(function(a) { return (a.agent || "").includes(sq.agent); })) return false;
+    if (sq.callResult && !(c.activities || []).some(function(a) { return (a.callResult || "").includes(sq.callResult); })) return false;
+    if (sq.actContent && !(c.activities || []).some(function(a) { return (a.content || "").includes(sq.actContent); })) return false;
+    if (sq.dateFrom && c.listCreatedDate && c.listCreatedDate < sq.dateFrom) return false;
+    if (sq.dateTo && c.listCreatedDate && c.listCreatedDate > sq.dateTo) return false;
     return true;
   });
 
@@ -61,7 +58,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
     return 0;
   });
 
-  var activeCount = Object.values(filters).filter(Boolean).length;
+  var activeCount = Object.values(searchQuery).filter(Boolean).length;
 
   // 保存
   var save = function() {
@@ -133,18 +130,6 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
 
   // ---- サイドバー ----
   var sidebar = h("div", { className: "sidebar" },
-    // 保存済み検索条件
-    savedFilters && savedFilters.length > 0 && h("div", { style: { padding: "6px 12px", borderBottom: "1px solid #1e2133" } },
-      h("select", { className: "search-input", style: { fontSize: 11 },
-        onChange: function(e) {
-          var f = savedFilters.find(function(x) { return x.id === e.target.value; });
-          if (f) setFilters(typeof f.filters === 'string' ? JSON.parse(f.filters) : f.filters);
-        }
-      },
-        h("option", { value: "" }, "保存済み条件..."),
-        savedFilters.map(function(f) { return h("option", { key: f.id, value: f.id }, f.name); })
-      )
-    ),
     h("div", { className: "sidebar-count" },
       h("span", null, filtered.length + " / " + companies.length + " 件"),
       h("span", { style: { float: "right", display: "flex", gap: 4 } },
@@ -246,23 +231,31 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
           )
     ),
 
-    // 営業行動カード
+    // 営業履歴カード（タブ切替）
     h("div", { className: "card" },
       h("div", { className: "card-header" },
-        h("div", { className: "card-title" }, "営業行動"),
         h("div", { className: "flex gap-4" },
-          ACTIVITY_TYPES.map(function(t) {
-            return h("button", { key: t, className: "btn btn-sm " + (showActForm && actType === t ? "btn-primary" : "btn-ghost"),
-              onClick: function() { setActType(t); setShowActForm(true); }
-            }, "+ " + t);
+          [["コール","通話履歴"],["アポ","訪問履歴"],["受注","受注履歴"]].map(function(t) {
+            return h("button", { key: t[0], className: "btn btn-sm " + (actTab === t[0] ? "btn-primary" : "btn-ghost"),
+              onClick: function() { setActTab(t[0]); }
+            }, t[1]);
           })
+        ),
+        h("div", { className: "flex gap-4" },
+          actTab !== "受注" && h("button", { className: "btn btn-sm " + (showActForm && actType === (actTab === "コール" ? "コール" : "アポ") ? "btn-primary" : "btn-ghost"),
+            onClick: function() { setActType(actTab === "コール" ? "コール" : "アポ"); setShowActForm(true); }
+          }, "+ 記録"),
+          actTab === "コール" && h("button", { className: "btn btn-sm " + (showActForm && actType === "商談" ? "btn-primary" : "btn-ghost"),
+            onClick: function() { setActType("商談"); setShowActForm(true); }
+          }, "+ 商談")
         )
       ),
+      // 記録フォーム
       showActForm && h("div", { style: { background: "#252836", borderRadius: 8, padding: 14, marginBottom: 14, border: "1px solid #3d4163" } },
         h("div", { className: "text-sm mb-8", style: { fontWeight: 600, color: "#7c8cf8" } }, actType + "を記録"),
         h("div", { className: "form-row form-row-3" },
           h(FormInput, { label: "日付 *", type: "date", value: actData.date, onChange: upAct("date") }),
-          h(FormInput, { label: "時間", value: actData.time, onChange: upAct("time"), placeholder: "例: 14:30" }),
+          h(FormInput, { label: "時間", type: "time", value: actData.time, onChange: upAct("time") }),
           agents.length > 0
             ? h(FormSelect, { label: "担当者", options: agents.map(function(a) { return a.name; }), value: actData.agent, onChange: upAct("agent") })
             : h(FormInput, { label: "担当者", value: actData.agent, onChange: upAct("agent") })
@@ -285,22 +278,52 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
           h("button", { className: "btn btn-secondary btn-sm", onClick: function() { setShowActForm(false); } }, "キャンセル")
         )
       ),
-      // 行動リスト
-      (sel.activities || []).length === 0
-        ? h("div", { className: "text-muted text-sm" }, "営業行動なし")
-        : (sel.activities || []).map(function(a) {
-            return h("div", { key: a.id, className: "activity-item" },
-              h("div", { className: "activity-date" }, fmtDate(a.date), a.time && h("span", { className: "text-xs text-muted" }, " " + a.time)),
-              h("span", { className: "activity-type activity-type-" + a.type }, a.type),
-              h("div", { className: "activity-content" },
-                a.type === "コール" && a.callType && h("span", { className: "text-muted text-xs" }, a.callType + " → "),
-                a.type === "コール" && a.callResult && h("span", { style: { color: a.callResult.includes("アポ") ? "#22c55e" : a.callResult.includes("再コール") ? "#f97316" : "#94a3b8", fontWeight: 600, fontSize: 12 } }, a.callResult + " "),
-                a.content
-              ),
-              h("div", { className: "activity-agent" }, a.agent),
-              h("button", { className: "btn-icon", style: { fontSize: 12 }, onClick: function() { deleteActivity(a.id); } }, "×")
-            );
-          })
+      // タブ別リスト
+      (function() {
+        var acts = sel.activities || [];
+        var tabActs;
+        if (actTab === "コール") tabActs = acts.filter(function(a) { return a.type === "コール" || a.type === "商談"; });
+        else if (actTab === "アポ") tabActs = acts.filter(function(a) { return a.type === "アポ"; });
+        else tabActs = []; // 受注は案件カードで表示
+
+        if (actTab === "受注") {
+          return (sel.deals || []).length === 0
+            ? h("div", { className: "text-muted text-sm" }, "受注履歴なし")
+            : h("table", { className: "table" },
+                h("thead", null, h("tr", null,
+                  ["案件名","ステータス","契約日","契約額","担当","粗利"].map(function(th) { return h("th", { key: th }, th); })
+                )),
+                h("tbody", null,
+                  (sel.deals || []).map(function(d) {
+                    return h("tr", { key: d.id },
+                      h("td", { style: { fontWeight: 600 } }, d.title || "―"),
+                      h("td", null, h("span", { className: "deal-status-" + d.status }, d.status)),
+                      h("td", { className: "text-muted" }, fmtDate(d.contractDate)),
+                      h("td", null, d.contractAmount ? fmtMoney(d.contractAmount) : "―"),
+                      h("td", null, d.agent),
+                      h("td", { style: { color: "#fbbf24" } }, d.grossProfit ? fmtMoney(d.grossProfit) : "―")
+                    );
+                  })
+                )
+              );
+        }
+
+        return tabActs.length === 0
+          ? h("div", { className: "text-muted text-sm" }, (actTab === "コール" ? "通話" : "訪問") + "履歴なし")
+          : tabActs.map(function(a) {
+              return h("div", { key: a.id, className: "activity-item" },
+                h("div", { className: "activity-date" }, fmtDate(a.date), a.time && h("span", { className: "text-xs text-muted" }, " " + a.time)),
+                h("span", { className: "activity-type activity-type-" + a.type }, a.type),
+                h("div", { className: "activity-content" },
+                  a.type === "コール" && a.callType && h("span", { className: "text-muted text-xs" }, a.callType + " → "),
+                  a.type === "コール" && a.callResult && h("span", { style: { color: a.callResult.includes("アポ") ? "#22c55e" : a.callResult.includes("再コール") ? "#f97316" : "#94a3b8", fontWeight: 600, fontSize: 12 } }, a.callResult + " "),
+                  a.content
+                ),
+                h("div", { className: "activity-agent" }, a.agent),
+                h("button", { className: "btn-icon", style: { fontSize: 12 }, onClick: function() { deleteActivity(a.id); } }, "×")
+              );
+            });
+      })()
     ),
 
     // 案件カード
@@ -381,53 +404,28 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
     )
   );
 
-  // ---- 検索パネル ----
-  var sf = function(k) { return function(v) { setFilters(function(p) { var r = Object.assign({}, p); r[k] = v; return r; }); }; };
-  var searchPanel = showSearch && h("div", { className: "search-panel" },
-    h("div", { className: "search-grid" },
-      h("div", null, h("div", { className: "search-label" }, "キーワード"),
-        h("input", { className: "search-input", value: filters.q, onChange: function(e) { sf("q")(e.target.value); }, placeholder: "企業名・電話..." })),
-      h("div", null, h("div", { className: "search-label" }, "顧客分類"),
-        h("select", { className: "search-input", value: filters.status, onChange: function(e) { sf("status")(e.target.value); } },
-          h("option", { value: "" }, "すべて"), STATUS_OPTIONS.map(function(o) { return h("option", { key: o, value: o }, o); }))),
-      h("div", null, h("div", { className: "search-label" }, "業種"),
-        h("select", { className: "search-input", value: filters.industry, onChange: function(e) { sf("industry")(e.target.value); } },
-          h("option", { value: "" }, "すべて"), INDUSTRY_OPTIONS.map(function(o) { return h("option", { key: o, value: o }, o); }))),
-      h("div", null, h("div", { className: "search-label" }, "都道府県"),
-        h("select", { className: "search-input", value: filters.prefecture, onChange: function(e) { sf("prefecture")(e.target.value); } },
-          h("option", { value: "" }, "すべて"), PREFECTURES.map(function(o) { return h("option", { key: o, value: o }, o); }))),
-      h("div", null, h("div", { className: "search-label" }, "市区町村"),
-        h("input", { className: "search-input", value: filters.city, onChange: function(e) { sf("city")(e.target.value); }, placeholder: "大阪市..." })),
-      h("div", null, h("div", { className: "search-label" }, "リスト From"),
-        h("input", { type: "date", className: "search-input", value: filters.dateFrom, onChange: function(e) { sf("dateFrom")(e.target.value); } })),
-      h("div", null, h("div", { className: "search-label" }, "リスト To"),
-        h("input", { type: "date", className: "search-input", value: filters.dateTo, onChange: function(e) { sf("dateTo")(e.target.value); } })),
-      h("div", { className: "flex gap-4", style: { marginTop: 13 } },
-        h("button", { className: "btn btn-ghost btn-sm w-full", onClick: function() { setFilters({ q: "", status: "", industry: "", prefecture: "", city: "", dateFrom: "", dateTo: "" }); } }, "クリア"),
-        h("button", { className: "btn btn-secondary btn-sm", onClick: function() { setShowSaveFilter(true); } }, "保存")
-      )
-    ),
-    showSaveFilter && h("div", { className: "flex gap-8 mt-8" },
-      h("input", { className: "search-input", value: filterName, onChange: function(e) { setFilterName(e.target.value); }, placeholder: "条件名を入力..." }),
-      h("button", { className: "btn btn-primary btn-sm", onClick: function() {
-        if (filterName) { onSaveFilter(filterName, filters); setShowSaveFilter(false); setFilterName(""); }
-      } }, "保存"),
-      h("button", { className: "btn btn-secondary btn-sm", onClick: function() { setShowSaveFilter(false); } }, "×")
-    )
-  );
+  // (旧検索パネル削除済み)
 
   return h("div", { style: { display: "flex", flexDirection: "column", flex: 1, overflow: "hidden", height: "100%" } },
     // ツールバー
     h("div", { style: { background: "#1a1d27", borderBottom: "1px solid #2d3148", padding: "6px 16px", display: "flex", gap: 8, alignItems: "center", flexShrink: 0 } },
-      h("button", { className: "btn btn-sm " + (searchMode ? "btn-primary" : "btn-ghost"), onClick: function() {
-        if (searchMode) { setSearchQuery({}); setSearchMode(false); }
-        else { setSearchQuery({}); setSearchMode(true); }
-      } }, searchMode ? "検索解除" : "検索"),
-      Object.keys(searchQuery).filter(function(k) { return searchQuery[k]; }).length > 0 && h("button", { className: "btn btn-ghost btn-sm", style: { color: "#ef4444" }, onClick: function() { setSearchQuery({}); } }, "条件クリア"),
-      h("button", { className: "btn btn-ghost btn-sm" + (showSearch ? " btn-primary" : ""), style: { position: "relative" },
-        onClick: function() { setShowSearch(!showSearch); }
-      }, "絞込",
-        activeCount > 0 && h("span", { style: { position: "absolute", top: -5, right: -5, background: "#7c8cf8", color: "#fff", borderRadius: "50%", width: 17, height: 17, fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 } }, activeCount)
+      h("button", { className: "btn btn-sm " + (searchMode ? "btn-primary" : "btn-ghost"), style: { position: "relative" }, onClick: function() {
+        if (searchMode) { setSearchMode(false); }
+        else { setSearchMode(true); }
+      } }, searchMode ? "検索解除" : "検索",
+        activeCount > 0 && !searchMode && h("span", { style: { position: "absolute", top: -5, right: -5, background: "#7c8cf8", color: "#fff", borderRadius: "50%", width: 17, height: 17, fontSize: 10, display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700 } }, activeCount)
+      ),
+      activeCount > 0 && !searchMode && h("button", { className: "btn btn-ghost btn-sm", style: { color: "#ef4444" }, onClick: function() { setSearchQuery({}); } }, "条件クリア"),
+      // 保存済み検索条件
+      savedFilters && savedFilters.length > 0 && h("select", { className: "btn btn-ghost btn-sm", style: { background: "#252836", color: "#94a3b8", border: "1px solid #3d4163", borderRadius: 6, padding: "4px 8px", fontSize: 12 },
+        onChange: function(e) {
+          var f = savedFilters.find(function(x) { return x.id === e.target.value; });
+          if (f) { setSearchQuery(typeof f.filters === 'string' ? JSON.parse(f.filters) : f.filters); setSearchMode(false); }
+          e.target.value = "";
+        }
+      },
+        h("option", { value: "" }, "保存済み条件"),
+        savedFilters.map(function(f) { return h("option", { key: f.id, value: f.id }, f.name); })
       ),
       h("div", { style: { flex: 1 } }),
       h("button", { className: "btn btn-success btn-sm", onClick: function() { setShowCsv(true); } }, "CSV入力"),
@@ -438,7 +436,6 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
       } }, "+ 新規企業"),
       h("button", { className: "btn btn-ghost btn-sm", onClick: function() { setView(view === "list" ? "detail" : "list"); } }, view === "list" ? "詳細" : "一覧")
     ),
-    searchPanel,
     h("div", { className: "main-content" },
       sidebar,
       h("div", { className: "content-area" },
@@ -446,7 +443,9 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
           query: searchQuery,
           onChange: setSearchQuery,
           onSearch: function() { setSearchMode(false); },
-          onCancel: function() { setSearchQuery({}); setSearchMode(false); }
+          onCancel: function() { setSearchQuery({}); setSearchMode(false); },
+          onSaveFilter: onSaveFilter,
+          agents: agents
         })
         : view === "detail" ? (sel ? detail : h("div", { className: "empty-state" }, "企業を選択してください"))
         : view === "list" ? listView
@@ -615,17 +614,19 @@ function CsvModal({ onClose, onImport }) {
 }
 
 // ---- FM式検索モードビュー ----
-function SearchModeView({ query, onChange, onSearch, onCancel }) {
+function SearchModeView({ query, onChange, onSearch, onCancel, onSaveFilter, agents }) {
   var s = function(k) { return function(v) { onChange(function(p) { var r = Object.assign({}, p); r[k] = v; return r; }); }; };
+  var _sn = useState(""), saveName = _sn[0], setSaveName = _sn[1];
+  var _showSave = useState(false), showSave = _showSave[0], setShowSave = _showSave[1];
 
-  var handleKeyDown = function(e) { if (e.key === "Enter") onSearch(); if (e.key === "Escape") onCancel(); };
-
-  return h("div", null,
+  return h("div", { onKeyDown: function(e) { if (e.key === "Enter") onSearch(); if (e.key === "Escape") onCancel(); } },
     h("div", { className: "card", style: { borderColor: "#7c8cf8", borderWidth: 2 } },
       h("div", { className: "card-header" },
         h("div", { style: { fontSize: 16, fontWeight: 700, color: "#7c8cf8" } }, "検索モード"),
         h("div", { className: "text-xs text-muted" }, "検索したいフィールドにテキストを入力 → Enter で検索")
       ),
+      // 企業情報
+      h("div", { className: "text-xs mb-8", style: { fontWeight: 600, color: "#64748b", borderBottom: "1px solid #2d3148", paddingBottom: 4 } }, "企業情報"),
       h("div", { className: "form-row form-row-2" },
         h(FormInput, { label: "企業名・カナ", value: query.name || "", onChange: s("name"), placeholder: "例: 山田建設" }),
         h(FormInput, { label: "電話番号", value: query.tel || "", onChange: s("tel"), placeholder: "例: 06-1111" })
@@ -640,13 +641,33 @@ function SearchModeView({ query, onChange, onSearch, onCancel }) {
         h(FormSelect, { label: "顧客分類", options: STATUS_OPTIONS, value: query.status || "", onChange: s("status") }),
         h(FormInput, { label: "業種", value: query.industry || "", onChange: s("industry"), placeholder: "例: ガテン系" })
       ),
-      h("div", { className: "form-row" },
-        h(FormInput, { label: "備考メモ", value: query.memo || "", onChange: s("memo"), placeholder: "メモの内容で検索" })
+      h("div", { className: "form-row form-row-2" },
+        h(FormInput, { label: "リスト作成 From", type: "date", value: query.dateFrom || "", onChange: s("dateFrom") }),
+        h(FormInput, { label: "リスト作成 To", type: "date", value: query.dateTo || "", onChange: s("dateTo") })
       ),
-      h("div", { className: "flex gap-12 mt-16" },
+      h(FormInput, { label: "備考メモ", value: query.memo || "", onChange: s("memo"), placeholder: "メモの内容で検索" }),
+      // 営業行動
+      h("div", { className: "text-xs mb-8 mt-16", style: { fontWeight: 600, color: "#64748b", borderBottom: "1px solid #2d3148", paddingBottom: 4 } }, "営業行動"),
+      h("div", { className: "form-row form-row-3" },
+        agents && agents.length > 0
+          ? h(FormSelect, { label: "担当者", options: agents.map(function(a) { return a.name; }), value: query.agent || "", onChange: s("agent") })
+          : h(FormInput, { label: "担当者", value: query.agent || "", onChange: s("agent") }),
+        h(FormSelect, { label: "通話結果", options: CALL_RESULTS, value: query.callResult || "", onChange: s("callResult") }),
+        h(FormInput, { label: "行動内容", value: query.actContent || "", onChange: s("actContent"), placeholder: "内容で検索" })
+      ),
+      // ボタン
+      h("div", { className: "flex gap-8 mt-16", style: { flexWrap: "wrap" } },
         h("button", { className: "btn btn-primary", onClick: onSearch }, "検索する（Enter）"),
         h("button", { className: "btn btn-secondary", onClick: onCancel }, "キャンセル（Esc）"),
-        h("button", { className: "btn btn-ghost", onClick: function() { onChange({}); } }, "条件クリア")
+        h("button", { className: "btn btn-ghost", onClick: function() { onChange({}); } }, "条件クリア"),
+        h("div", { style: { flex: 1 } }),
+        !showSave
+          ? h("button", { className: "btn btn-ghost btn-sm", onClick: function() { setShowSave(true); } }, "この条件を保存")
+          : h("div", { className: "flex gap-4" },
+              h("input", { className: "form-input", style: { width: 180, padding: "4px 8px", fontSize: 12 }, value: saveName, onChange: function(e) { setSaveName(e.target.value); }, placeholder: "条件名..." }),
+              h("button", { className: "btn btn-primary btn-sm", onClick: function() { if (saveName && onSaveFilter) { onSaveFilter(saveName, query); setSaveName(""); setShowSave(false); } } }, "保存"),
+              h("button", { className: "btn btn-ghost btn-sm", onClick: function() { setShowSave(false); } }, "×")
+            )
       )
     ),
     h("div", { className: "text-muted text-sm mt-12", style: { textAlign: "center" } },
