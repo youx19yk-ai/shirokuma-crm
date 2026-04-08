@@ -89,6 +89,19 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
     if (!actData.date) return;
     var data = Object.assign({}, actData, { type: actType });
     API.addActivity(selectedId, data).then(function() {
+      // アポ結果の場合、訪問予定レコードを自動作成
+      if (actType === "コール" && actData.callType === "アポ" && APPO_RESULTS.includes(actData.callResult)) {
+        API.addActivity(selectedId, {
+          type: "アポ",
+          date: actData.nextCallDate || "",
+          time: actData.nextCallTime || "",
+          agent: actData.agent,
+          location: "",
+          visitResult: "",
+          appoType: actData.callResult,
+          content: actData.callResult + "（自動作成）"
+        });
+      }
       setShowActForm(false);
       setActData({ date: todayStr(), time: nowTimeStr(), agent: "", callType: "", callResult: "", location: "", visitResult: "", content: "", nextCallDate: "", nextCallTime: "", nextCallMemo: "" });
       onReload();
@@ -258,8 +271,8 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
             : h(FormInput, { label: "担当者", value: actData.agent, onChange: upAct("agent") })
         ),
         actType === "コール" && h("div", { className: "form-row form-row-2" },
-          h(FormSelect, { label: "通話分類", options: CALL_TYPES, value: actData.callType, onChange: upAct("callType") }),
-          h(FormSelect, { label: "通話結果", options: CALL_RESULTS, value: actData.callResult, onChange: upAct("callResult") })
+          h(FormSelect, { label: "通話分類", options: CALL_TYPES, value: actData.callType, onChange: function(v) { upAct("callType")(v); upAct("callResult")(""); } }),
+          h(FormSelect, { label: "通話結果", options: actData.callType === "アポ" ? APPO_RESULTS : CALL_RESULTS, value: actData.callResult, onChange: upAct("callResult") })
         ),
         (actType === "アポ" || actType === "商談") && h("div", { className: "form-row form-row-2" },
           h(FormInput, { label: "場所", value: actData.location, onChange: upAct("location"), placeholder: "例: 本社会議室" }),
@@ -315,6 +328,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
                 h("div", { className: "activity-content" },
                   a.type === "コール" && a.callType && h("span", { className: "text-muted text-xs" }, a.callType + " → "),
                   a.type === "コール" && a.callResult && h("span", { style: { color: a.callResult.includes("アポ") ? "#22c55e" : a.callResult.includes("再コール") ? "#f97316" : "#94a3b8", fontWeight: 600, fontSize: 12 } }, a.callResult + " "),
+                  (a.type === "アポ" || a.type === "商談") && a.appoType && h("span", { className: "badge badge-blue", style: { fontSize: 10, marginRight: 4 } }, a.appoType),
                   (a.type === "アポ" || a.type === "商談") && a.visitResult && h("span", { style: { color: a.visitResult === "契約" ? "#22c55e" : a.visitResult === "NG" ? "#ef4444" : a.visitResult === "検討" ? "#f97316" : "#94a3b8", fontWeight: 600, fontSize: 12, marginRight: 4 } }, "[" + a.visitResult + "] "),
                   (a.type === "アポ" || a.type === "商談") && a.location && h("span", { className: "text-muted text-xs" }, a.location + " "),
                   a.content
