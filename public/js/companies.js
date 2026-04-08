@@ -401,7 +401,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
     )
   );
 
-  return h("div", { style: { display: "flex", flexDirection: "column", flex: 1 } },
+  return h("div", { style: { display: "flex", flexDirection: "column", flex: 1, overflow: "hidden", height: "100%" } },
     // ツールバー
     h("div", { style: { background: "#1a1d27", borderBottom: "1px solid #2d3148", padding: "6px 16px", display: "flex", gap: 8, alignItems: "center", flexShrink: 0 } },
       h("button", { className: "btn btn-ghost btn-sm" + (showSearch ? " btn-primary" : ""), style: { position: "relative" },
