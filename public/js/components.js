@@ -10,6 +10,7 @@ const STATUS_OPTIONS = ["見込み","顧客","関連会社","休眠","NG"];
 const INDUSTRY_OPTIONS = ["ガテン系","IT/通信","製造業","小売業","飲食業","医療/福祉","教育","不動産","建設","運送","美容","その他"];
 const CALL_TYPES = ["WEB提案完了","決裁者通話","不通","折返し","資料送付","その他"];
 const CALL_RESULTS = ["コールのみ","必要性のYES取れず","話し込めず再コール","諦め判断","アポ取得"];
+const VISIT_RESULTS = ["契約","NG","検討","日変","訪問日編"];
 const PHONE_TYPES = ["固定","携帯","代表者携帯","FAX"];
 const DEAL_STATUSES = ["商談中","契約済","審査中","制作中","取材待ち","取材済","納品済","完了"];
 const PAYMENT_METHODS = ["信販","現金","振込"];
