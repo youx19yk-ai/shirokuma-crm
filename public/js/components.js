@@ -52,6 +52,11 @@ function todayStr() {
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 }
 
+function nowTimeStr() {
+  const d = new Date();
+  return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+}
+
 // ---- フォーム部品 ----
 
 function FormInput({ label, value, onChange, placeholder, type, multi, rows, className }) {
@@ -170,7 +175,8 @@ function CompanyForm({ data, onChange, agents }) {
     ),
     h("div", { className: "form-row form-row-2" },
       h(FormInput, { label: "リスト作成年月日", type: "date", value: data.listCreatedDate, onChange: s("listCreatedDate") }),
-      h(FormInput, { label: "次回コール予定日", type: "date", value: data.nextCallDate, onChange: s("nextCallDate") })
+      h(FormInput, { label: "次回コール予定日", type: "date", value: data.nextCallDate, onChange: s("nextCallDate") }),
+      h(FormInput, { label: "次回コール時間", type: "time", value: data.nextCallTime, onChange: s("nextCallTime") })
     ),
     h(FormInput, { label: "次回コールメモ", value: data.nextCallMemo, onChange: s("nextCallMemo"), placeholder: "例: 見積もり確認" }),
     h(FormInput, { label: "備考メモ", value: data.memo, onChange: s("memo"), multi: true })

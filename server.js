@@ -46,6 +46,7 @@ async function initDB(retries = 10, delay = 3000) {
       list_created_date TEXT DEFAULT '',
       next_call_date TEXT DEFAULT '',
       next_call_memo TEXT DEFAULT '',
+      next_call_time TEXT DEFAULT '',
       memo TEXT DEFAULT '',
       created_at TIMESTAMP DEFAULT NOW(),
       updated_at TIMESTAMP DEFAULT NOW()
@@ -158,7 +159,8 @@ async function initDB(retries = 10, delay = 3000) {
   // companiesテーブルに新カラム追加（既存DB対応）
   const newCols = [
     ['next_call_date', "TEXT DEFAULT ''"],
-    ['next_call_memo', "TEXT DEFAULT ''"]
+    ['next_call_memo', "TEXT DEFAULT ''"],
+    ['next_call_time', "TEXT DEFAULT ''"]
   ];
   for (const [col, def] of newCols) {
     try {
@@ -204,6 +206,7 @@ app.get('/api/companies', async (req, res) => {
       listCreatedDate: c.list_created_date,
       nextCallDate: c.next_call_date,
       nextCallMemo: c.next_call_memo,
+      nextCallTime: c.next_call_time,
       memo: c.memo,
       createdAt: c.created_at,
       updatedAt: c.updated_at,
@@ -240,11 +243,11 @@ app.post('/api/companies', async (req, res) => {
     await pool.query(`
       INSERT INTO companies (id, name, name_kana, zip, prefecture, city, address, url,
         representative, status, industry, industry_detail, list_created_date,
-        next_call_date, next_call_memo, memo)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+        next_call_date, next_call_memo, next_call_time, memo)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
     `, [id, c.name, c.nameKana||'', c.zip||'', c.prefecture||'', c.city||'', c.address||'',
         c.url||'', c.representative||'', c.status||'見込み', c.industry||'', c.industryDetail||'',
-        c.listCreatedDate||'', c.nextCallDate||'', c.nextCallMemo||'', c.memo||'']);
+        c.listCreatedDate||'', c.nextCallDate||'', c.nextCallMemo||'', c.nextCallTime||'', c.memo||'']);
     res.json({ id });
   } catch (e) {
     console.error(e);
@@ -260,12 +263,12 @@ app.put('/api/companies/:id', async (req, res) => {
       UPDATE companies SET
         name=$1, name_kana=$2, zip=$3, prefecture=$4, city=$5, address=$6, url=$7,
         representative=$8, status=$9, industry=$10, industry_detail=$11,
-        list_created_date=$12, next_call_date=$13, next_call_memo=$14, memo=$15,
+        list_created_date=$12, next_call_date=$13, next_call_memo=$14, next_call_time=$15, memo=$16,
         updated_at=NOW()
-      WHERE id=$16
+      WHERE id=$17
     `, [c.name, c.nameKana||'', c.zip||'', c.prefecture||'', c.city||'', c.address||'',
         c.url||'', c.representative||'', c.status||'見込み', c.industry||'', c.industryDetail||'',
-        c.listCreatedDate||'', c.nextCallDate||'', c.nextCallMemo||'', c.memo||'', req.params.id]);
+        c.listCreatedDate||'', c.nextCallDate||'', c.nextCallMemo||'', c.nextCallTime||'', c.memo||'', req.params.id]);
     res.json({ ok: true });
   } catch (e) {
     console.error(e);
@@ -421,8 +424,8 @@ app.post('/api/companies/:id/activities', async (req, res) => {
     // 次回コール予定日の更新（指定されていれば）
     if (a.nextCallDate) {
       await pool.query(
-        'UPDATE companies SET next_call_date=$1, next_call_memo=$2, updated_at=NOW() WHERE id=$3',
-        [a.nextCallDate, a.nextCallMemo||'', req.params.id]
+        'UPDATE companies SET next_call_date=$1, next_call_memo=$2, next_call_time=$3, updated_at=NOW() WHERE id=$4',
+        [a.nextCallDate, a.nextCallMemo||'', a.nextCallTime||'', req.params.id]
       );
     }
 
@@ -598,11 +601,11 @@ app.get('/api/dashboard/stats', async (req, res) => {
     );
     const todayStr = now.toISOString().split('T')[0];
     const todayTasks = await pool.query(
-      "SELECT c.id, c.name, c.next_call_date, c.next_call_memo FROM companies c WHERE c.next_call_date = $1",
+      "SELECT c.id, c.name, c.next_call_date, c.next_call_memo, c.next_call_time FROM companies c WHERE c.next_call_date = $1",
       [todayStr]
     );
     const overdue = await pool.query(
-      "SELECT c.id, c.name, c.next_call_date, c.next_call_memo FROM companies c WHERE c.next_call_date < $1 AND c.next_call_date != ''",
+      "SELECT c.id, c.name, c.next_call_date, c.next_call_memo, c.next_call_time FROM companies c WHERE c.next_call_date < $1 AND c.next_call_date != ''",
       [todayStr]
     );
 
@@ -612,8 +615,8 @@ app.get('/api/dashboard/stats', async (req, res) => {
       monthCalls: parseInt(monthCalls.rows[0].count),
       monthAppo: parseInt(monthAppo.rows[0].count),
       monthDeals: parseInt(monthDeals.rows[0].count),
-      todayTasks: todayTasks.rows.map(r => ({ id: r.id, name: r.name, date: r.next_call_date, memo: r.next_call_memo })),
-      overdue: overdue.rows.map(r => ({ id: r.id, name: r.name, date: r.next_call_date, memo: r.next_call_memo }))
+      todayTasks: todayTasks.rows.map(r => ({ id: r.id, name: r.name, date: r.next_call_date, memo: r.next_call_memo, time: r.next_call_time })),
+      overdue: overdue.rows.map(r => ({ id: r.id, name: r.name, date: r.next_call_date, memo: r.next_call_memo, time: r.next_call_time }))
     });
   } catch (e) {
     console.error(e);
@@ -731,11 +734,11 @@ app.get('/api/calendar/:year/:month', async (req, res) => {
   const monthStr = `${year}-${month.padStart(2, '0')}`;
   try {
     const { rows } = await pool.query(
-      "SELECT id, name, next_call_date, next_call_memo FROM companies WHERE next_call_date LIKE $1",
+      "SELECT id, name, next_call_date, next_call_memo, next_call_time FROM companies WHERE next_call_date LIKE $1",
       [monthStr + '%']
     );
     res.json(rows.map(r => ({
-      id: r.id, name: r.name, date: r.next_call_date, memo: r.next_call_memo
+      id: r.id, name: r.name, date: r.next_call_date, memo: r.next_call_memo, time: r.next_call_time
     })));
   } catch (e) {
     console.error(e);

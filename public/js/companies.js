@@ -14,7 +14,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
   var _sortDir = useState("desc"), sortDir = _sortDir[0], setSortDir = _sortDir[1];
   var _showAct = useState(false), showActForm = _showAct[0], setShowActForm = _showAct[1];
   var _actType = useState("コール"), actType = _actType[0], setActType = _actType[1];
-  var _act = useState({ date: todayStr(), time: "", agent: "", callType: "", callResult: "", location: "", content: "", nextCallDate: "", nextCallMemo: "" }), actData = _act[0], setActData = _act[1];
+  var _act = useState({ date: todayStr(), time: nowTimeStr(), agent: "", callType: "", callResult: "", location: "", content: "", nextCallDate: "", nextCallTime: "", nextCallMemo: "" }), actData = _act[0], setActData = _act[1];
   var _showPhone = useState(false), showPhoneForm = _showPhone[0], setShowPhoneForm = _showPhone[1];
   var _phone = useState({ number: "", type: "固定", label: "" }), phoneData = _phone[0], setPhoneData = _phone[1];
   var _showDeal = useState(false), showDealForm = _showDeal[0], setShowDealForm = _showDeal[1];
@@ -79,7 +79,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
     var data = Object.assign({}, actData, { type: actType });
     API.addActivity(selectedId, data).then(function() {
       setShowActForm(false);
-      setActData({ date: todayStr(), time: "", agent: "", callType: "", callResult: "", location: "", content: "", nextCallDate: "", nextCallMemo: "" });
+      setActData({ date: todayStr(), time: nowTimeStr(), agent: "", callType: "", callResult: "", location: "", content: "", nextCallDate: "", nextCallTime: "", nextCallMemo: "" });
       onReload();
     }).catch(function(e) { alert("保存失敗: " + e.message); });
   };
@@ -223,7 +223,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
               h(InfoRow, { label: "代表者", value: sel.representative }),
               h(InfoRow, { label: "URL", value: sel.url, link: true }),
               h(InfoRow, { label: "業種", value: sel.industry + (sel.industryDetail ? " / " + sel.industryDetail : "") }),
-              h(InfoRow, { label: "次回コール", value: sel.nextCallDate ? fmtDate(sel.nextCallDate) + (sel.nextCallMemo ? " 「" + sel.nextCallMemo + "」" : "") : "―",
+              h(InfoRow, { label: "次回コール", value: sel.nextCallDate ? fmtDate(sel.nextCallDate) + (sel.nextCallTime ? " " + sel.nextCallTime : "") + (sel.nextCallMemo ? " 「" + sel.nextCallMemo + "」" : "") : "―",
                 highlight: sel.nextCallDate && sel.nextCallDate <= todayStr() }),
               h(InfoRow, { label: "コール数", value: sel.callCount || 0 })
             ),
@@ -261,8 +261,9 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
           h(FormInput, { label: "場所", value: actData.location, onChange: upAct("location"), placeholder: "例: 本社会議室" })
         ),
         h(FormInput, { label: "内容", value: actData.content, onChange: upAct("content") }),
-        h("div", { className: "form-row form-row-2" },
+        h("div", { className: "form-row form-row-3" },
           h(FormInput, { label: "次回コール予定日", type: "date", value: actData.nextCallDate, onChange: upAct("nextCallDate") }),
+          h(FormInput, { label: "次回コール時間", type: "time", value: actData.nextCallTime, onChange: upAct("nextCallTime") }),
           h(FormInput, { label: "次回メモ", value: actData.nextCallMemo, onChange: upAct("nextCallMemo"), placeholder: "例: 見積もり確認" })
         ),
         h("div", { className: "flex gap-8" },
@@ -413,7 +414,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
       h("button", { className: "btn btn-success btn-sm", onClick: function() { setShowCsv(true); } }, "CSV入力"),
       h("button", { className: "btn btn-secondary btn-sm", onClick: function() { API.exportCSV(); } }, "CSV出力"),
       h("button", { className: "btn btn-primary btn-sm", onClick: function() {
-        setEditData({ name: "", nameKana: "", zip: "", prefecture: "", city: "", address: "", url: "", representative: "", status: "見込み", industry: "", industryDetail: "", listCreatedDate: "", nextCallDate: "", nextCallMemo: "", memo: "" });
+        setEditData({ name: "", nameKana: "", zip: "", prefecture: "", city: "", address: "", url: "", representative: "", status: "見込み", industry: "", industryDetail: "", listCreatedDate: "", nextCallDate: "", nextCallTime: "", nextCallMemo: "", memo: "" });
         setView("newCompany");
       } }, "+ 新規企業"),
       h("button", { className: "btn btn-ghost btn-sm", onClick: function() { setView(view === "list" ? "detail" : "list"); } }, view === "list" ? "詳細" : "一覧")
