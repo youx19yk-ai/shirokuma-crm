@@ -244,7 +244,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
         h("div", { className: "flex gap-4" },
           actTab !== "受注" && h("button", { className: "btn btn-sm " + (showActForm && actType === (actTab === "コール" ? "コール" : "アポ") ? "btn-primary" : "btn-ghost"),
             onClick: function() { setActType(actTab === "コール" ? "コール" : "アポ"); setShowActForm(true); }
-          }, "+ 記録"),
+          }, "+ 新規作成"),
           actTab === "コール" && h("button", { className: "btn btn-sm " + (showActForm && actType === "商談" ? "btn-primary" : "btn-ghost"),
             onClick: function() { setActType("商談"); setShowActForm(true); }
           }, "+ 商談")
