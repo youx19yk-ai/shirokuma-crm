@@ -250,7 +250,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
         h("div", { className: "flex gap-4" },
           [["コール","通話履歴"],["アポ","訪問履歴"],["受注","受注履歴"]].map(function(t) {
             return h("button", { key: t[0], className: "btn btn-sm " + (actTab === t[0] ? "btn-primary" : "btn-ghost"),
-              onClick: function() { setActTab(t[0]); }
+              onClick: function() { setActTab(t[0]); setShowActForm(false); }
             }, t[1]);
           })
         ),
@@ -324,7 +324,6 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
           : tabActs.map(function(a) {
               return h("div", { key: a.id, className: "activity-item" },
                 h("div", { className: "activity-date" }, fmtDate(a.date), a.time && h("span", { className: "text-xs text-muted" }, " " + a.time)),
-                h("span", { className: "activity-type activity-type-" + a.type }, a.type),
                 h("div", { className: "activity-content" },
                   a.type === "コール" && a.callType && h("span", { className: "text-muted text-xs" }, a.callType + " → "),
                   a.type === "コール" && a.callResult && h("span", { style: { color: a.callResult.includes("アポ") ? "#22c55e" : a.callResult.includes("再コール") ? "#f97316" : "#94a3b8", fontWeight: 600, fontSize: 12 } }, a.callResult + " "),
@@ -340,37 +339,6 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
       })()
     ),
 
-    // 案件カード
-    h("div", { className: "card" },
-      h("div", { className: "card-header" },
-        h("div", { className: "card-title" }, "案件"),
-        h("button", { className: "btn btn-primary btn-sm", onClick: function() { setShowDealForm(true); } }, "+ 新規案件")
-      ),
-      (sel.deals || []).length === 0
-        ? h("div", { className: "text-muted text-sm" }, "案件なし")
-        : h("table", { className: "table" },
-            h("thead", null, h("tr", null,
-              ["案件名","ステータス","担当","契約額","信販","粗利"].map(function(th) { return h("th", { key: th }, th); })
-            )),
-            h("tbody", null,
-              (sel.deals || []).map(function(d) {
-                return h("tr", { key: d.id },
-                  h("td", { style: { fontWeight: 600 } }, d.title || "―"),
-                  h("td", null, h("span", { className: "deal-status-" + d.status }, d.status)),
-                  h("td", null, d.agent),
-                  h("td", null, d.contractAmount ? fmtMoney(d.contractAmount) : "―"),
-                  h("td", null, d.paymentMethod === "信販" ? (d.creditStatus || "―") : d.paymentMethod || "―"),
-                  h("td", { style: { color: "#fbbf24" } }, d.grossProfit ? fmtMoney(d.grossProfit) : "―")
-                );
-              })
-            )
-          ),
-      showDealForm && h(DealFormModal, {
-        companyId: sel.id, plans: plans, agents: agents, creditCompanies: creditCompanies,
-        onClose: function() { setShowDealForm(false); },
-        onSave: function() { setShowDealForm(false); onReload(); }
-      })
-    )
   );
 
   // ---- 一覧ビュー ----
