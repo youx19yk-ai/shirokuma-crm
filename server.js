@@ -76,6 +76,7 @@ async function initDB(retries = 10, delay = 3000) {
       location TEXT DEFAULT '',
       visit_result TEXT DEFAULT '',
       appo_type TEXT DEFAULT '',
+      visit_role TEXT DEFAULT '',
       content TEXT DEFAULT '',
       created_at TIMESTAMP DEFAULT NOW()
     );
@@ -167,6 +168,7 @@ async function initDB(retries = 10, delay = 3000) {
   // activitiesテーブルの新カラム
   try { await pool.query("ALTER TABLE activities ADD COLUMN visit_result TEXT DEFAULT ''"); } catch(e) {}
   try { await pool.query("ALTER TABLE activities ADD COLUMN appo_type TEXT DEFAULT ''"); } catch(e) {}
+  try { await pool.query("ALTER TABLE activities ADD COLUMN visit_role TEXT DEFAULT ''"); } catch(e) {}
   for (const [col, def] of newCols) {
     try {
       await pool.query(`ALTER TABLE companies ADD COLUMN ${col} ${def}`);
@@ -220,7 +222,7 @@ app.get('/api/companies', async (req, res) => {
       })),
       activities: acts.rows.filter(a => a.company_id === c.id).map(a => ({
         id: a.id, type: a.type, date: a.date, time: a.time, agent: a.agent,
-        callType: a.call_type, callResult: a.call_result, location: a.location, visitResult: a.visit_result, appoType: a.appo_type, content: a.content
+        callType: a.call_type, callResult: a.call_result, location: a.location, visitResult: a.visit_result, appoType: a.appo_type, visitRole: a.visit_role, content: a.content
       })),
       deals: dealRows.rows.filter(d => d.company_id === c.id).map(d => ({
         id: d.id, planId: d.plan_id, title: d.title, status: d.status, agent: d.agent,
@@ -408,7 +410,7 @@ app.get('/api/companies/:id/activities', async (req, res) => {
     );
     res.json(rows.map(a => ({
       id: a.id, type: a.type, date: a.date, time: a.time, agent: a.agent,
-      callType: a.call_type, callResult: a.call_result, location: a.location, visitResult: a.visit_result, appoType: a.appo_type, content: a.content
+      callType: a.call_type, callResult: a.call_result, location: a.location, visitResult: a.visit_result, appoType: a.appo_type, visitRole: a.visit_role, content: a.content
     })));
   } catch (e) {
     console.error(e);
@@ -421,10 +423,10 @@ app.post('/api/companies/:id/activities', async (req, res) => {
   const id = genId();
   try {
     await pool.query(`
-      INSERT INTO activities (id, company_id, type, date, time, agent, call_type, call_result, location, visit_result, appo_type, content)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+      INSERT INTO activities (id, company_id, type, date, time, agent, call_type, call_result, location, visit_result, appo_type, visit_role, content)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
     `, [id, req.params.id, a.type||'コール', a.date||'', a.time||'', a.agent||'',
-        a.callType||'', a.callResult||'', a.location||'', a.visitResult||'', a.appoType||'', a.content||'']);
+        a.callType||'', a.callResult||'', a.location||'', a.visitResult||'', a.appoType||'', a.visitRole||'', a.content||'']);
 
     // 次回コール予定日の更新（指定されていれば）
     if (a.nextCallDate) {
@@ -446,10 +448,10 @@ app.put('/api/activities/:id', async (req, res) => {
   try {
     await pool.query(`
       UPDATE activities SET type=$1, date=$2, time=$3, agent=$4, call_type=$5,
-        call_result=$6, location=$7, visit_result=$8, appo_type=$9, content=$10
-      WHERE id=$11
+        call_result=$6, location=$7, visit_result=$8, appo_type=$9, visit_role=$10, content=$11
+      WHERE id=$12
     `, [a.type||'コール', a.date||'', a.time||'', a.agent||'',
-        a.callType||'', a.callResult||'', a.location||'', a.visitResult||'', a.appoType||'', a.content||'', req.params.id]);
+        a.callType||'', a.callResult||'', a.location||'', a.visitResult||'', a.appoType||'', a.visitRole||'', a.content||'', req.params.id]);
     res.json({ ok: true });
   } catch (e) {
     console.error(e);

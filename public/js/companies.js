@@ -15,7 +15,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
   var _sortDir = useState("desc"), sortDir = _sortDir[0], setSortDir = _sortDir[1];
   var _showAct = useState(false), showActForm = _showAct[0], setShowActForm = _showAct[1];
   var _actType = useState("コール"), actType = _actType[0], setActType = _actType[1];
-  var _act = useState({ date: todayStr(), time: nowTimeStr(), agent: "", callType: "", callResult: "", location: "", visitResult: "", content: "", nextCallDate: "", nextCallTime: "", nextCallMemo: "" }), actData = _act[0], setActData = _act[1];
+  var _act = useState({ date: todayStr(), time: nowTimeStr(), agent: "", callType: "", callResult: "", location: "", visitResult: "", visitRole: "", appoType: "", content: "", nextCallDate: "", nextCallTime: "", nextCallMemo: "" }), actData = _act[0], setActData = _act[1];
   var _showPhone = useState(false), showPhoneForm = _showPhone[0], setShowPhoneForm = _showPhone[1];
   var _phone = useState({ number: "", type: "固定", label: "" }), phoneData = _phone[0], setPhoneData = _phone[1];
   var _showDeal = useState(false), showDealForm = _showDeal[0], setShowDealForm = _showDeal[1];
@@ -103,7 +103,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
         });
       }
       setShowActForm(false);
-      setActData({ date: todayStr(), time: nowTimeStr(), agent: "", callType: "", callResult: "", location: "", visitResult: "", content: "", nextCallDate: "", nextCallTime: "", nextCallMemo: "" });
+      setActData({ date: todayStr(), time: nowTimeStr(), agent: "", callType: "", callResult: "", location: "", visitResult: "", visitRole: "", appoType: "", content: "", nextCallDate: "", nextCallTime: "", nextCallMemo: "" });
       onReload();
     }).catch(function(e) { alert("保存失敗: " + e.message); });
   };
@@ -274,9 +274,19 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
           h(FormSelect, { label: "通話分類", options: CALL_TYPES, value: actData.callType, onChange: function(v) { upAct("callType")(v); upAct("callResult")(""); } }),
           h(FormSelect, { label: "通話結果", options: actData.callType === "アポ" ? APPO_RESULTS : CALL_RESULTS, value: actData.callResult, onChange: upAct("callResult") })
         ),
-        (actType === "アポ" || actType === "商談") && h("div", { className: "form-row form-row-2" },
-          h(FormInput, { label: "場所", value: actData.location, onChange: upAct("location"), placeholder: "例: 本社会議室" }),
-          h(FormSelect, { label: "訪問結果", options: VISIT_RESULTS, value: actData.visitResult, onChange: upAct("visitResult") })
+        (actType === "アポ" || actType === "商談") && h("div", null,
+          h("div", { className: "flex gap-4 mb-8" },
+            VISIT_ROLES.map(function(r) {
+              return h("button", { key: r, className: "btn btn-sm " + (actData.visitRole === r ? "btn-primary" : "btn-ghost"),
+                onClick: function() { upAct("visitRole")(r); }
+              }, r);
+            })
+          ),
+          h("div", { className: "form-row form-row-3" },
+            h(FormInput, { label: "場所", value: actData.location, onChange: upAct("location"), placeholder: "例: 本社会議室" }),
+            h(FormSelect, { label: "訪問結果", options: VISIT_RESULTS, value: actData.visitResult, onChange: upAct("visitResult") }),
+            h(FormSelect, { label: "アポ種別", options: APPO_RESULTS, value: actData.appoType, onChange: upAct("appoType") })
+          )
         ),
         h(FormInput, { label: "内容", value: actData.content, onChange: upAct("content") }),
         h("div", { className: "form-row form-row-3" },
@@ -327,6 +337,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
                 h("div", { className: "activity-content" },
                   a.type === "コール" && a.callType && h("span", { className: "text-muted text-xs" }, a.callType + " → "),
                   a.type === "コール" && a.callResult && h("span", { style: { color: a.callResult.includes("アポ") ? "#22c55e" : a.callResult.includes("再コール") ? "#f97316" : "#94a3b8", fontWeight: 600, fontSize: 12 } }, a.callResult + " "),
+                  (a.type === "アポ" || a.type === "商談") && a.visitRole && h("span", { className: "badge badge-purple", style: { fontSize: 10, marginRight: 4 } }, a.visitRole),
                   (a.type === "アポ" || a.type === "商談") && a.appoType && h("span", { className: "badge badge-blue", style: { fontSize: 10, marginRight: 4 } }, a.appoType),
                   (a.type === "アポ" || a.type === "商談") && a.visitResult && h("span", { style: { color: a.visitResult === "契約" ? "#22c55e" : a.visitResult === "NG" ? "#ef4444" : a.visitResult === "検討" ? "#f97316" : "#94a3b8", fontWeight: 600, fontSize: 12, marginRight: 4 } }, "[" + a.visitResult + "] "),
                   (a.type === "アポ" || a.type === "商談") && a.location && h("span", { className: "text-muted text-xs" }, a.location + " "),
