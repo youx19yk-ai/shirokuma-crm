@@ -249,11 +249,27 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
           )
         )
       ),
-      // 企業情報フォーム（常に編集可能）
-      h(CompanyForm, { data: sel, onChange: function(updater) {
-        var updated = updater(sel);
-        saveCompany(updated);
-      }, agents: agents })
+      // 企業情報（コンパクト表示 + クリックで編集）
+      h("div", { className: "info-grid mb-12" },
+        h(EditableField, { label: "住所", value: [sel.zip, sel.prefecture, sel.city, sel.address].filter(Boolean).join(" "), onSave: function(v) {
+          // 住所をパース
+          var m = v.match(/^(\d{3}-?\d{4})?\s*(..?.?[都道府県])?\s*(.+?[市区町村郡])?\s*(.*)/);
+          if (m) { saveCompany(Object.assign({}, sel, { zip: (m[1]||"").trim(), prefecture: (m[2]||"").trim(), city: (m[3]||"").trim(), address: (m[4]||"").trim() })); }
+          else { saveCompany(Object.assign({}, sel, { address: v })); }
+        }}),
+        h(EditableField, { label: "代表者", value: sel.representative, onSave: function(v) { saveCompany(Object.assign({}, sel, { representative: v })); } }),
+        h(EditableField, { label: "URL", value: sel.url, link: true, onSave: function(v) { saveCompany(Object.assign({}, sel, { url: v })); } }),
+        h(EditableSelect, { label: "顧客分類", value: sel.status, options: STATUS_OPTIONS, onSave: function(v) { saveCompany(Object.assign({}, sel, { status: v })); } }),
+        h(EditableSelect, { label: "業種", value: sel.industry, options: INDUSTRY_OPTIONS, onSave: function(v) { saveCompany(Object.assign({}, sel, { industry: v })); } }),
+        h(EditableField, { label: "業種詳細", value: sel.industryDetail, onSave: function(v) { saveCompany(Object.assign({}, sel, { industryDetail: v })); } }),
+        h(EditableField, { label: "リスト作成日", value: sel.listCreatedDate, type: "date", onSave: function(v) { saveCompany(Object.assign({}, sel, { listCreatedDate: v })); } }),
+        h(EditableField, { label: "次回コール", value: sel.nextCallDate, type: "date", onSave: function(v) { saveCompany(Object.assign({}, sel, { nextCallDate: v })); },
+          highlight: sel.nextCallDate && sel.nextCallDate <= todayStr() }),
+        h(EditableField, { label: "次回メモ", value: sel.nextCallMemo, onSave: function(v) { saveCompany(Object.assign({}, sel, { nextCallMemo: v })); } }),
+        h(InfoRow, { label: "コール数", value: sel.callCount || 0 })
+      ),
+      // 備考メモ
+      h(MemoEditor, { key: "memo-" + sel.id, value: sel.memo, onSave: function(v) { saveCompany(Object.assign({}, sel, { memo: v })); } })
     ),
 
     // 営業履歴カード（タブ切替）

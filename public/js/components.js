@@ -50,6 +50,11 @@ function fmtMoney(n) {
   return "¥" + Number(n).toLocaleString();
 }
 
+function toHalfWidth(str) {
+  if (!str) return str;
+  return str.replace(/[０-９]/g, function(s) { return String.fromCharCode(s.charCodeAt(0) - 0xFEE0); });
+}
+
 function todayStr() {
   const d = new Date();
   return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
@@ -63,18 +68,19 @@ function nowTimeStr() {
 // ---- フォーム部品 ----
 
 function FormInput({ label, value, onChange, placeholder, type, multi, rows, className }) {
+  var handleChange = function(e) { onChange(toHalfWidth(e.target.value)); };
   return h("div", { className: "form-group " + (className || "") },
     label && h("label", { className: "form-label" }, label),
     multi
       ? h("textarea", {
           className: "form-input", rows: rows || 3, value: value || "",
           placeholder: placeholder || "",
-          onChange: function(e) { onChange(e.target.value); }
+          onChange: handleChange
         })
       : h("input", {
           className: "form-input", type: type || "text", value: value || "",
           placeholder: placeholder || "",
-          onChange: function(e) { onChange(e.target.value); }
+          onChange: handleChange
         })
   );
 }
@@ -147,6 +153,54 @@ function MemoEditor({ value, onSave }) {
     h("div", { className: "memo-view", onClick: function() { setEditing(true); } },
       value || h("span", { className: "text-muted", style: { fontStyle: "italic" } }, "クリックして編集...")
     )
+  );
+}
+
+// ---- クリック編集フィールド ----
+function EditableField({ label, value, onSave, type, link, highlight }) {
+  var _e = useState(false), editing = _e[0], setEditing = _e[1];
+  var _d = useState(value || ""), draft = _d[0], setDraft = _d[1];
+  var inputRef = useRef(null);
+  useEffect(function() { setDraft(value || ""); }, [value]);
+  useEffect(function() { if (editing && inputRef.current) inputRef.current.focus(); }, [editing]);
+
+  if (editing) {
+    return h("div", null,
+      h("div", { className: "info-label" }, label),
+      h("input", { ref: inputRef, className: "form-input", type: type || "text", value: draft,
+        style: { padding: "4px 8px", fontSize: 13 },
+        onChange: function(e) { setDraft(toHalfWidth(e.target.value)); },
+        onBlur: function() { if (draft !== (value || "")) onSave(draft); setEditing(false); },
+        onKeyDown: function(e) { if (e.key === "Enter") { e.target.blur(); } if (e.key === "Escape") { setDraft(value || ""); setEditing(false); } }
+      })
+    );
+  }
+  return h("div", { style: { cursor: "pointer" }, onClick: function() { setEditing(true); } },
+    h("div", { className: "info-label" }, label),
+    (link && value)
+      ? h("a", { href: value.startsWith("http") ? value : "https://" + value, target: "_blank", rel: "noreferrer", className: "info-value", onClick: function(e) { e.stopPropagation(); } }, value)
+      : h("div", { className: "info-value" + (highlight ? " text-highlight" : "") }, value || "―")
+  );
+}
+
+function EditableSelect({ label, value, options, onSave }) {
+  var _e = useState(false), editing = _e[0], setEditing = _e[1];
+
+  if (editing) {
+    return h("div", null,
+      h("div", { className: "info-label" }, label),
+      h("select", { className: "form-input", value: value || "", style: { padding: "4px 8px", fontSize: 13 },
+        onChange: function(e) { onSave(e.target.value); setEditing(false); },
+        onBlur: function() { setEditing(false); }
+      },
+        h("option", { value: "" }, "選択..."),
+        options.map(function(o) { return h("option", { key: o, value: o }, o); })
+      )
+    );
+  }
+  return h("div", { style: { cursor: "pointer" }, onClick: function() { setEditing(true); } },
+    h("div", { className: "info-label" }, label),
+    h("div", { className: "info-value" }, value || "―")
   );
 }
 
