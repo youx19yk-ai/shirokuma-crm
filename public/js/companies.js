@@ -19,6 +19,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
   var _showPhone = useState(false), showPhoneForm = _showPhone[0], setShowPhoneForm = _showPhone[1];
   var _phone = useState({ number: "", type: "固定", label: "" }), phoneData = _phone[0], setPhoneData = _phone[1];
   var _showDeal = useState(false), showDealForm = _showDeal[0], setShowDealForm = _showDeal[1];
+  var _editAct = useState(null), editActData = _editAct[0], setEditActData = _editAct[1];
   var _filterName = useState(""), filterName = _filterName[0], setFilterName = _filterName[1];
   var _showSaveFilter = useState(false), showSaveFilter = _showSaveFilter[0], setShowSaveFilter = _showSaveFilter[1];
 
@@ -112,6 +113,14 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
   var deleteActivity = function(actId) {
     API.deleteActivity(actId).then(function() { onReload(); });
   };
+
+  // 行動編集保存
+  var saveEditActivity = function() {
+    API.updateActivity(editActData.id, editActData).then(function() {
+      setEditActData(null); onReload();
+    }).catch(function(e) { alert("保存失敗: " + e.message); });
+  };
+  var upEditAct = function(k) { return function(v) { setEditActData(function(p) { var r = Object.assign({}, p); r[k] = v; return r; }); }; };
 
   // 電話番号追加
   var addPhone = function() {
@@ -344,6 +353,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
                   a.content
                 ),
                 h("div", { className: "activity-agent" }, a.agent),
+                h("button", { className: "btn-icon", style: { fontSize: 12 }, onClick: function() { setEditActData(Object.assign({}, a)); } }, "✎"),
                 h("button", { className: "btn-icon", style: { fontSize: 12 }, onClick: function() { deleteActivity(a.id); } }, "×")
               );
             });
@@ -446,7 +456,45 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
       )
     ),
     showCsv && h(CsvModal, { onClose: function() { setShowCsv(false); }, onImport: importCSV }),
-    showConfirm && h(ConfirmDialog, { message: "「" + sel.name + "」を削除しますか？\n関連する電話番号・営業行動・案件もすべて削除されます。", onOk: doDelete, onCancel: function() { setShowConfirm(false); } })
+    showConfirm && h(ConfirmDialog, { message: "「" + sel.name + "」を削除しますか？\n関連する電話番号・営業行動・案件もすべて削除されます。", onOk: doDelete, onCancel: function() { setShowConfirm(false); } }),
+    editActData && h("div", { className: "modal-overlay", onClick: function() { setEditActData(null); } },
+      h("div", { className: "modal", onClick: function(e) { e.stopPropagation(); } },
+        h("div", { className: "modal-header" },
+          h("div", { className: "modal-title" }, (editActData.type === "コール" ? "通話" : "訪問") + "レコード編集"),
+          h("button", { className: "modal-close", onClick: function() { setEditActData(null); } }, "×")
+        ),
+        h("div", { className: "form-row form-row-3" },
+          h(FormInput, { label: "日付", type: "date", value: editActData.date, onChange: upEditAct("date") }),
+          h(FormInput, { label: "時間", type: "time", value: editActData.time, onChange: upEditAct("time") }),
+          agents.length > 0
+            ? h(FormSelect, { label: "担当者", options: agents.map(function(a) { return a.name; }), value: editActData.agent, onChange: upEditAct("agent") })
+            : h(FormInput, { label: "担当者", value: editActData.agent, onChange: upEditAct("agent") })
+        ),
+        editActData.type === "コール" && h("div", { className: "form-row form-row-2" },
+          h(FormSelect, { label: "通話分類", options: CALL_TYPES, value: editActData.callType, onChange: function(v) { upEditAct("callType")(v); upEditAct("callResult")(""); } }),
+          h(FormSelect, { label: "通話結果", options: editActData.callType === "アポ" ? APPO_RESULTS : CALL_RESULTS, value: editActData.callResult, onChange: upEditAct("callResult") })
+        ),
+        (editActData.type === "アポ" || editActData.type === "商談") && h("div", null,
+          h("div", { className: "flex gap-4 mb-8" },
+            VISIT_ROLES.map(function(r) {
+              return h("button", { key: r, className: "btn btn-sm " + (editActData.visitRole === r ? "btn-primary" : "btn-ghost"),
+                onClick: function() { upEditAct("visitRole")(r); }
+              }, r);
+            })
+          ),
+          h("div", { className: "form-row form-row-3" },
+            h(FormInput, { label: "場所", value: editActData.location, onChange: upEditAct("location") }),
+            h(FormSelect, { label: "訪問結果", options: VISIT_RESULTS, value: editActData.visitResult, onChange: upEditAct("visitResult") }),
+            h(FormSelect, { label: "アポ種別", options: APPO_RESULTS, value: editActData.appoType, onChange: upEditAct("appoType") })
+          )
+        ),
+        h(FormInput, { label: "内容", value: editActData.content, onChange: upEditAct("content") }),
+        h("div", { className: "flex gap-12 mt-16", style: { justifyContent: "flex-end" } },
+          h("button", { className: "btn btn-secondary", onClick: function() { setEditActData(null); } }, "キャンセル"),
+          h("button", { className: "btn btn-primary", onClick: saveEditActivity }, "保存")
+        )
+      )
+    )
   );
 }
 
