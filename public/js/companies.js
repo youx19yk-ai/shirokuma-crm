@@ -248,6 +248,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
       ),
       // 企業情報（コンパクト表示 + クリックで編集）
       h("div", { className: "info-grid mb-12" },
+        h(EditableSelect, { label: "法人格", value: sel.corpType, options: CORP_TYPES, onSave: function(v) { saveCompany(Object.assign({}, sel, { corpType: v })); } }),
         h(EditableField, { label: "住所", value: [sel.zip, sel.prefecture, sel.city, sel.address].filter(Boolean).join(" "), onSave: function(v) {
           // 住所をパース
           var m = v.match(/^(\d{3}-?\d{4})?\s*(..?.?[都道府県])?\s*(.+?[市区町村郡])?\s*(.*)/);
