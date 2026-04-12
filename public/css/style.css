@@ -218,10 +218,11 @@ textarea.form-input { resize: vertical; }
 
 /* ---- Activity timeline ---- */
 .activity-item {
-  display: grid; grid-template-columns: 110px 90px 100px 1fr 80px 30px; gap: 4px; align-items: center;
-  padding: 6px 8px; margin-bottom: 4px;
+  display: block; padding: 6px 10px; margin-bottom: 4px;
   border: 1px solid #4a4f6a; border-radius: 6px;
 }
+.act-row { display: flex; gap: 6px; align-items: center; }
+.act-row + .act-row { margin-top: 3px; }
 .activity-item:hover { background: #1e2133; }
 .activity-date { font-size: 12px; color: #64748b; }
 .activity-type { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; }
