@@ -2,7 +2,7 @@
 // 共通コンポーネント & ユーティリティ
 // ============================================================
 const h = React.createElement;
-const { useState, useEffect, useRef, useCallback } = React;
+const { useState, useEffect, useRef } = React;
 
 // 定数
 const PREFECTURES = ["北海道","青森県","岩手県","宮城県","秋田県","山形県","福島県","茨城県","栃木県","群馬県","埼玉県","千葉県","東京都","神奈川県","新潟県","富山県","石川県","福井県","山梨県","長野県","岐阜県","静岡県","愛知県","三重県","滋賀県","京都府","大阪府","兵庫県","奈良県","和歌山県","鳥取県","島根県","岡山県","広島県","山口県","徳島県","香川県","愛媛県","高知県","福岡県","佐賀県","長崎県","熊本県","大分県","宮崎県","鹿児島県","沖縄県"];
@@ -17,7 +17,6 @@ const PHONE_TYPES = ["固定","携帯","代表者携帯","FAX"];
 const DEAL_STATUSES = ["商談中","契約済","審査中","制作中","取材待ち","取材済","納品済","完了"];
 const PAYMENT_METHODS = ["信販","現金","振込"];
 const CREDIT_STATUSES = ["申請中","承認","却下"];
-const ACTIVITY_TYPES = ["コール","アポ","商談"];
 
 // CSVヘッダーマッピング
 const CSV_MAP = {
@@ -201,6 +200,34 @@ function EditableSelect({ label, value, options, onSave }) {
   return h("div", { style: { cursor: "pointer" }, onClick: function() { setEditing(true); } },
     h("div", { className: "info-label" }, label),
     h("div", { className: "info-value" }, value || "―")
+  );
+}
+
+// ---- 電話番号インライン編集 ----
+function EditablePhone({ phone, onSave, onDelete }) {
+  var _e = useState(false), editing = _e[0], setEditing = _e[1];
+  var _d = useState(phone), draft = _d[0], setDraft = _d[1];
+  useEffect(function() { setDraft(phone); }, [phone.number, phone.type, phone.label]);
+
+  if (editing) {
+    return h("div", { className: "phone-row", style: { gap: 4 } },
+      h("input", { className: "form-input", style: { padding: "2px 6px", fontSize: 12, width: 120 }, value: draft.number,
+        onChange: function(e) { setDraft(Object.assign({}, draft, { number: toHalfWidth(e.target.value) })); } }),
+      h("select", { className: "form-input", style: { padding: "2px 4px", fontSize: 11, width: 60 }, value: draft.type,
+        onChange: function(e) { setDraft(Object.assign({}, draft, { type: e.target.value })); } },
+        PHONE_TYPES.map(function(t) { return h("option", { key: t, value: t }, t); })
+      ),
+      h("input", { className: "form-input", style: { padding: "2px 6px", fontSize: 11, flex: 1 }, value: draft.label, placeholder: "ラベル",
+        onChange: function(e) { setDraft(Object.assign({}, draft, { label: e.target.value })); } }),
+      h("button", { className: "btn-icon btn-sm", style: { color: "#22c55e" }, onClick: function() { onSave(draft); setEditing(false); } }, "✓"),
+      h("button", { className: "btn-icon btn-sm", onClick: function() { setDraft(phone); setEditing(false); } }, "×")
+    );
+  }
+  return h("div", { className: "phone-row", style: { cursor: "pointer" }, onClick: function() { setEditing(true); } },
+    h("span", { className: "phone-number" }, phone.number),
+    h("span", { className: "phone-type" }, phone.type),
+    h("span", { className: "phone-label" }, phone.label),
+    h("button", { className: "btn-icon btn-sm", onClick: function(e) { e.stopPropagation(); onDelete(); } }, "×")
   );
 }
 

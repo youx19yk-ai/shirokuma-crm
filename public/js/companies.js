@@ -189,7 +189,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
     ),
     filtered.map(function(c) {
       return h("div", { key: c.id, className: "sidebar-item" + (selectedId === c.id ? " active" : ""),
-        onClick: function() { onSelect(c.id); setView("detail"); setEditMode(false); }
+        onClick: function() { onSelect(c.id); setView("detail"); }
       },
         h("div", { className: "flex gap-4", style: { marginBottom: 2 } },
           h("span", { className: "badge " + statusBadgeClass(c.status), style: { fontSize: 10 } }, c.status),
@@ -230,12 +230,9 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
         ),
         (sel.phones || []).length === 0 && !showPhoneForm && h("div", { className: "text-muted text-sm" }, "電話番号未登録"),
         (sel.phones || []).map(function(p) {
-          return h("div", { key: p.id, className: "phone-row" },
-            h("span", { className: "phone-number" }, p.number),
-            h("span", { className: "phone-type" }, p.type),
-            h("span", { className: "phone-label" }, p.label),
-            h("button", { className: "btn-icon btn-sm", onClick: function() { deletePhone(p.id); } }, "×")
-          );
+          return h(EditablePhone, { key: p.id, phone: p, onSave: function(updated) {
+            API.updatePhone(p.id, updated).then(function() { onReload(); });
+          }, onDelete: function() { deletePhone(p.id); } });
         }),
         showPhoneForm && h("div", { style: { background: "#252836", borderRadius: 8, padding: 12, marginTop: 8 } },
           h("div", { className: "form-row form-row-3" },
