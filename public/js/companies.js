@@ -15,7 +15,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
   var _sortDir = useState("desc"), sortDir = _sortDir[0], setSortDir = _sortDir[1];
   var _showAct = useState(false), showActForm = _showAct[0], setShowActForm = _showAct[1];
   var _actType = useState("コール"), actType = _actType[0], setActType = _actType[1];
-  var _act = useState({ date: todayStr(), time: nowTimeStr(), agent: "", callType: "", callResult: "", location: "", visitResult: "", visitRole: "", appoType: "", content: "", nextCallDate: "", nextCallTime: "", nextCallMemo: "" }), actData = _act[0], setActData = _act[1];
+  var _act = useState({ date: todayStr(), time: nowTimeStr(), agent: "", callType: "", callResult: "", location: "", visitResult: "未実施", visitRole: "", appoType: "", content: "", nextCallDate: "", nextCallTime: "", nextCallMemo: "" }), actData = _act[0], setActData = _act[1];
   var _showPhone = useState(false), showPhoneForm = _showPhone[0], setShowPhoneForm = _showPhone[1];
   var _phone = useState({ number: "", type: "固定", label: "" }), phoneData = _phone[0], setPhoneData = _phone[1];
   var _showDeal = useState(false), showDealForm = _showDeal[0], setShowDealForm = _showDeal[1];
@@ -98,13 +98,13 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
           time: actData.nextCallTime || "",
           agent: actData.agent,
           location: "",
-          visitResult: "",
+          visitResult: "未実施",
           appoType: actData.callResult,
           content: actData.callResult + "（自動作成）"
         });
       }
       setShowActForm(false);
-      setActData({ date: todayStr(), time: nowTimeStr(), agent: "", callType: "", callResult: "", location: "", visitResult: "", visitRole: "", appoType: "", content: "", nextCallDate: "", nextCallTime: "", nextCallMemo: "" });
+      setActData({ date: todayStr(), time: nowTimeStr(), agent: "", callType: "", callResult: "", location: "", visitResult: "未実施", visitRole: "", appoType: "", content: "", nextCallDate: "", nextCallTime: "", nextCallMemo: "" });
       onReload();
     }).catch(function(e) { alert("保存失敗: " + e.message); });
   };
@@ -348,7 +348,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
                   a.type === "コール" && a.callResult && h("span", { style: { color: a.callResult.includes("アポ") ? "#22c55e" : a.callResult.includes("再コール") ? "#f97316" : "#94a3b8", fontWeight: 600, fontSize: 12 } }, a.callResult + " "),
                   (a.type === "アポ" || a.type === "商談") && a.visitRole && h("span", { className: "badge badge-purple", style: { fontSize: 10, marginRight: 4 } }, a.visitRole),
                   (a.type === "アポ" || a.type === "商談") && a.appoType && h("span", { className: "badge badge-blue", style: { fontSize: 10, marginRight: 4 } }, a.appoType),
-                  (a.type === "アポ" || a.type === "商談") && a.visitResult && h("span", { style: { color: a.visitResult === "契約" ? "#22c55e" : a.visitResult === "NG" ? "#ef4444" : a.visitResult === "検討" ? "#f97316" : "#94a3b8", fontWeight: 600, fontSize: 12, marginRight: 4 } }, "[" + a.visitResult + "] "),
+                  (a.type === "アポ" || a.type === "商談") && h("span", { style: { color: a.visitResult === "契約" ? "#22c55e" : a.visitResult === "NG" || a.visitResult === "前確NG" ? "#ef4444" : a.visitResult === "検討" ? "#f97316" : a.visitResult === "未実施" ? "#64748b" : "#94a3b8", fontWeight: 600, fontSize: 12, marginRight: 4 } }, "[" + (a.visitResult || "未実施") + "] "),
                   (a.type === "アポ" || a.type === "商談") && a.location && h("span", { className: "text-muted text-xs" }, a.location + " "),
                   a.content
                 ),
