@@ -8,6 +8,7 @@ const { useState, useEffect, useRef } = React;
 const PREFECTURES = ["北海道","青森県","岩手県","宮城県","秋田県","山形県","福島県","茨城県","栃木県","群馬県","埼玉県","千葉県","東京都","神奈川県","新潟県","富山県","石川県","福井県","山梨県","長野県","岐阜県","静岡県","愛知県","三重県","滋賀県","京都府","大阪府","兵庫県","奈良県","和歌山県","鳥取県","島根県","岡山県","広島県","山口県","徳島県","香川県","愛媛県","高知県","福岡県","佐賀県","長崎県","熊本県","大分県","宮崎県","鹿児島県","沖縄県"];
 const STATUS_OPTIONS = ["見込み","顧客","関連会社","休眠","NG"];
 const CORP_TYPES = ["株式会社","有限会社","合同会社","個人事業主"];
+const URL_TYPES = ["HP","求人LP","受注LP","ポータルサイト","求人サイト","無料サイト"];
 const INDUSTRY_OPTIONS = ["ガテン系","IT/通信","製造業","小売業","飲食業","医療/福祉","教育","不動産","建設","運送","美容","その他"];
 const CALL_TYPES = ["アポ","決済通話","担当者通話","受付通話","不通"];
 const CALL_RESULTS = ["必要性のYES取れず","話し込めず再コール","諦め判断","アポ取得"];
@@ -230,6 +231,35 @@ function EditablePhone({ phone, onSave, onDelete }) {
     h("span", { className: "phone-number" }, phone.number),
     h("span", { className: "phone-type" }, phone.type),
     h("span", { className: "phone-label" }, phone.label),
+    h("button", { className: "btn-icon btn-sm", onClick: function(e) { e.stopPropagation(); onDelete(); } }, "×")
+  );
+}
+
+// ---- URL インライン編集 ----
+function EditableUrl({ urlData, onSave, onDelete }) {
+  var _e = useState(false), editing = _e[0], setEditing = _e[1];
+  var _d = useState(urlData), draft = _d[0], setDraft = _d[1];
+  useEffect(function() { setDraft(urlData); }, [urlData.url, urlData.type]);
+  var doSave = function() { if (draft.url !== urlData.url || draft.type !== urlData.type) onSave(draft); setEditing(false); };
+
+  if (editing) {
+    return h("div", { className: "phone-row", style: { gap: 4 } },
+      h("input", { className: "form-input", style: { padding: "2px 4px", fontSize: 11, flex: 1 }, value: draft.url, placeholder: "https://...",
+        onChange: function(e) { setDraft(Object.assign({}, draft, { url: e.target.value })); },
+        onBlur: doSave, onKeyDown: function(e) { if (e.key === "Enter") doSave(); } }),
+      h("select", { className: "form-input", style: { padding: "2px 2px", fontSize: 10, width: 80 }, value: draft.type,
+        onChange: function(e) { setDraft(Object.assign({}, draft, { type: e.target.value })); } },
+        h("option", { value: "" }, "種別"),
+        URL_TYPES.map(function(t) { return h("option", { key: t, value: t }, t); })
+      )
+    );
+  }
+  return h("div", { className: "phone-row", style: { cursor: "pointer" }, onClick: function() { setEditing(true); } },
+    h("a", { href: urlData.url.startsWith("http") ? urlData.url : "https://" + urlData.url, target: "_blank", rel: "noreferrer",
+      style: { color: "#7c8cf8", fontSize: 11, textDecoration: "none", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+      onClick: function(e) { e.stopPropagation(); }
+    }, urlData.url || "―"),
+    h("span", { style: { color: "#94a3b8", fontSize: 10, minWidth: 60 } }, urlData.type || "―"),
     h("button", { className: "btn-icon btn-sm", onClick: function(e) { e.stopPropagation(); onDelete(); } }, "×")
   );
 }

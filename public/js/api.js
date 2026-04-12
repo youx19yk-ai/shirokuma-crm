@@ -20,6 +20,11 @@ const API = {
   deletePhone: (id) => fetch('/api/phones/' + id, { method: 'DELETE' }).then(apiJson),
   searchPhone: (q) => fetch('/api/phones/search?q=' + encodeURIComponent(q)).then(apiJson),
 
+  // URL
+  addUrl: (companyId, u) => fetch('/api/companies/' + companyId + '/urls', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(u) }).then(apiJson),
+  updateUrl: (id, u) => fetch('/api/urls/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(u) }).then(apiJson),
+  deleteUrl: (id) => fetch('/api/urls/' + id, { method: 'DELETE' }).then(apiJson),
+
   // 営業行動
   getActivities: (companyId) => fetch('/api/companies/' + companyId + '/activities').then(apiJson),
   addActivity: (companyId, a) => fetch('/api/companies/' + companyId + '/activities', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(a) }).then(apiJson),

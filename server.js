@@ -65,6 +65,15 @@ async function initDB(retries = 10, delay = 3000) {
     );
     CREATE UNIQUE INDEX IF NOT EXISTS idx_phone_number ON phone_numbers(number) WHERE number != '';
 
+    -- URL管理
+    CREATE TABLE IF NOT EXISTS company_urls (
+      id TEXT PRIMARY KEY,
+      company_id TEXT REFERENCES companies(id) ON DELETE CASCADE,
+      url TEXT DEFAULT '',
+      type TEXT DEFAULT '',
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+
     -- T3: 営業行動
     CREATE TABLE IF NOT EXISTS activities (
       id TEXT PRIMARY KEY,
@@ -198,6 +207,7 @@ app.get('/api/companies', async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM companies ORDER BY created_at DESC');
     const phones = await pool.query('SELECT * FROM phone_numbers ORDER BY created_at');
+    const urls = await pool.query('SELECT * FROM company_urls ORDER BY created_at');
     const acts = await pool.query('SELECT * FROM activities ORDER BY date DESC, created_at DESC');
     const dealRows = await pool.query('SELECT * FROM deals ORDER BY created_at DESC');
 
@@ -225,6 +235,9 @@ app.get('/api/companies', async (req, res) => {
       updatedAt: c.updated_at,
       phones: phones.rows.filter(p => p.company_id === c.id).map(p => ({
         id: p.id, number: p.number, type: p.type, label: p.label
+      })),
+      urls: urls.rows.filter(u => u.company_id === c.id).map(u => ({
+        id: u.id, url: u.url, type: u.type
       })),
       activities: acts.rows.filter(a => a.company_id === c.id).map(a => ({
         id: a.id, type: a.type, date: a.date, time: a.time, agent: a.agent,
@@ -405,6 +418,26 @@ app.get('/api/phones/search', async (req, res) => {
 });
 
 // ============================================================
+// URL API
+app.post('/api/companies/:id/urls', async (req, res) => {
+  const u = req.body; const id = genId();
+  try {
+    await pool.query('INSERT INTO company_urls (id, company_id, url, type) VALUES ($1,$2,$3,$4)', [id, req.params.id, u.url||'', u.type||'']);
+    res.json({ id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.put('/api/urls/:id', async (req, res) => {
+  const u = req.body;
+  try {
+    await pool.query('UPDATE company_urls SET url=$1, type=$2 WHERE id=$3', [u.url||'', u.type||'', req.params.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.delete('/api/urls/:id', async (req, res) => {
+  try { await pool.query('DELETE FROM company_urls WHERE id=$1', [req.params.id]); res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // 営業行動 API
 // ============================================================
 

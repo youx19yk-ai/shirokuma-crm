@@ -18,6 +18,8 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
   var _act = useState({ date: todayStr(), time: nowTimeStr(), agent: "", callType: "", callResult: "", location: "", visitResult: "未実施", visitRole: "", appoType: "", content: "", nextCallDate: "", nextCallTime: "", nextCallMemo: "" }), actData = _act[0], setActData = _act[1];
   var _showPhone = useState(false), showPhoneForm = _showPhone[0], setShowPhoneForm = _showPhone[1];
   var _phone = useState({ number: "", type: "固定", label: "" }), phoneData = _phone[0], setPhoneData = _phone[1];
+  var _showUrl = useState(false), showUrlForm = _showUrl[0], setShowUrlForm = _showUrl[1];
+  var _urlData = useState({ url: "", type: "" }), urlData = _urlData[0], setUrlData = _urlData[1];
   var _editAct = useState(null), editActData = _editAct[0], setEditActData = _editAct[1];
 
   var sel = companies.find(function(c) { return c.id === selectedId; });
@@ -158,6 +160,17 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
     API.deletePhone(phoneId).then(function() { onReload(); });
   };
 
+  // URL追加
+  var addUrl = function() {
+    if (!urlData.url) return;
+    API.addUrl(selectedId, urlData).then(function() {
+      setShowUrlForm(false); setUrlData({ url: "", type: "" }); onReload();
+    });
+  };
+  var deleteUrl = function(urlId) {
+    API.deleteUrl(urlId).then(function() { onReload(); });
+  };
+
   // CSVインポート
   var importCSV = function(rows) {
     setSaving(true);
@@ -262,13 +275,38 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
                 h("button", { className: "btn btn-primary btn-sm", style: { padding: "1px 6px", fontSize: 10 }, onClick: addPhone }, "+")
               )
             )
+          ),
+          // URL
+          h("div", { style: { marginTop: 8 } },
+            h("div", { className: "flex-between", style: { marginBottom: 3 } },
+              h("div", { className: "info-label" }, "URL"),
+              h("button", { className: "btn btn-ghost btn-sm", style: { padding: "0px 5px", fontSize: 10 }, onClick: function() { setShowUrlForm(!showUrlForm); } }, "+")
+            ),
+            (sel.urls || []).length === 0 && !showUrlForm && h("div", { className: "text-muted text-xs" }, "未登録"),
+            (sel.urls || []).map(function(u) {
+              return h(EditableUrl, { key: u.id, urlData: u, onSave: function(updated) {
+                API.updateUrl(u.id, updated).then(function() { onReload(); });
+              }, onDelete: function() { deleteUrl(u.id); } });
+            }),
+            showUrlForm && h("div", { style: { background: "#252836", borderRadius: 4, padding: 6, marginTop: 3 } },
+              h("div", { className: "flex gap-4" },
+                h("input", { className: "form-input", style: { padding: "2px 4px", fontSize: 11, flex: 1 }, value: urlData.url, placeholder: "https://...",
+                  onChange: function(e) { setUrlData(Object.assign({}, urlData, { url: e.target.value })); } }),
+                h("select", { className: "form-input", style: { padding: "2px 2px", fontSize: 10, width: 80 }, value: urlData.type,
+                  onChange: function(e) { setUrlData(Object.assign({}, urlData, { type: e.target.value })); } },
+                  h("option", { value: "" }, "種別"),
+                  URL_TYPES.map(function(t) { return h("option", { key: t, value: t }, t); })
+                ),
+                h("button", { className: "btn btn-primary btn-sm", style: { padding: "1px 6px", fontSize: 10 }, onClick: addUrl }, "+")
+              )
+            )
           )
         ),
         // ---- 右カラム ----
         h("div", null,
-          h("div", { style: { marginBottom: 8 } }),
+          h("div", { style: { marginBottom: 28 } }),
           h(EditableSelect, { label: "業種", value: sel.industry, options: INDUSTRY_OPTIONS, onSave: function(v) { saveCompany(Object.assign({}, sel, { industry: v })); } }),
-          h("div", { style: { marginTop: 8 } },
+          h("div", { style: { marginTop: 40 } },
             h(EditableField, { label: "代表者名", value: sel.representative, onSave: function(v) { saveCompany(Object.assign({}, sel, { representative: v })); } })
           ),
           h("div", { style: { marginTop: 8 } },
@@ -283,11 +321,10 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
         h(EditableField, { label: "リスト作成日", value: sel.listCreatedDate, type: "date", onSave: function(v) { saveCompany(Object.assign({}, sel, { listCreatedDate: v })); } }),
         h(InfoRow, { label: "コール数", value: sel.callCount || 0 })
       ),
-      h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 8 } },
+      h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 } },
         h(EditableField, { label: "次回コール", value: sel.nextCallDate, type: "date", onSave: function(v) { saveCompany(Object.assign({}, sel, { nextCallDate: v })); },
           highlight: sel.nextCallDate && sel.nextCallDate <= todayStr() }),
-        h(EditableField, { label: "次回メモ", value: sel.nextCallMemo, onSave: function(v) { saveCompany(Object.assign({}, sel, { nextCallMemo: v })); } }),
-        h(EditableField, { label: "URL", value: sel.url, link: true, onSave: function(v) { saveCompany(Object.assign({}, sel, { url: v })); } })
+        h(EditableField, { label: "次回メモ", value: sel.nextCallMemo, onSave: function(v) { saveCompany(Object.assign({}, sel, { nextCallMemo: v })); } })
       ),
       // 備考メモ
       h(MemoEditor, { key: "memo-" + sel.id, value: sel.memo, onSave: function(v) { saveCompany(Object.assign({}, sel, { memo: v })); } })
