@@ -4,6 +4,7 @@
 function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plans, creditCompanies, savedFilters, onSaveFilter }) {
   var _v = useState("detail"), view = _v[0], setView = _v[1];
   var _ed = useState(null), editData = _ed[0], setEditData = _ed[1];
+  var _undo = useState([]), undoStack = _undo[0], setUndoStack = _undo[1];
   var _sm = useState(false), searchMode = _sm[0], setSearchMode = _sm[1];
   var _sq = useState({}), searchQuery = _sq[0], setSearchQuery = _sq[1];
   var _actTab = useState("コール"), actTab = _actTab[0], setActTab = _actTab[1];
@@ -62,6 +63,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
   // インライン保存（デバウンス付き）
   var saveTimer = useRef(null);
   var saveCompany = function(data) {
+    if (sel) setUndoStack(function(prev) { return [{ type: "company", id: sel.id, data: Object.assign({}, sel) }].concat(prev).slice(0, 20); });
     setSaving(true);
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(function() {
@@ -112,6 +114,16 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
       setActData({ date: todayStr(), time: nowTimeStr(), agent: "", callType: "", callResult: "", location: "", visitResult: "未実施", visitRole: "", appoType: "", content: "", nextCallDate: "", nextCallTime: "", nextCallMemo: "" });
       onReload();
     }).catch(function(e) { alert("保存失敗: " + e.message); });
+  };
+
+  // ひとつ戻す
+  var undo = function() {
+    if (undoStack.length === 0) return;
+    var last = undoStack[0];
+    setUndoStack(function(prev) { return prev.slice(1); });
+    if (last.type === "company") {
+      API.updateCompany(last.id, last.data).then(function() { onReload(); });
+    }
   };
 
   // 行動削除
@@ -203,6 +215,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
           saving && h("span", { className: "text-xs text-muted" }, "保存中...")
         ),
         h("div", { className: "flex gap-8" },
+          undoStack.length > 0 && h("button", { className: "btn btn-ghost btn-sm", onClick: undo }, "戻す"),
           h("button", { className: "btn btn-ghost btn-sm", style: { color: "#ef4444" }, onClick: function() { setShowConfirm(true); } }, "削除")
         )
       ),
