@@ -359,7 +359,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
         h("div", { className: "flex gap-4" },
           [["コール","通話履歴"],["アポ","訪問履歴"],["受注","受注履歴"]].map(function(t) {
             return h("button", { key: t[0], className: "btn btn-sm " + (actTab === t[0] ? "btn-primary" : "btn-ghost"),
-              onClick: function() { setActTab(t[0]); setShowActForm(false); }
+              onClick: function() { setActTab(t[0]); setShowActForm(false); setEditActData(null); }
             }, t[1]);
           })
         ),
