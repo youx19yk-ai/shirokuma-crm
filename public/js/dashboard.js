@@ -1,11 +1,12 @@
 // ============================================================
 // ダッシュボード画面
 // ============================================================
-function DashboardPage({ onNavigate }) {
+function DashboardPage({ onNavigate, agents }) {
   var _s = useState(null), stats = _s[0], setStats = _s[1];
   var _d = useState([]), dailyCalls = _d[0], setDailyCalls = _d[1];
   var _a = useState([]), agentStats = _a[0], setAgentStats = _a[1];
   var _l = useState(true), loading = _l[0], setLoading = _l[1];
+  var _fa = useState(""), filterAgent = _fa[0], setFilterAgent = _fa[1];
 
   useEffect(function() {
     Promise.all([
@@ -46,8 +47,25 @@ function DashboardPage({ onNavigate }) {
   }
 
   var byStatus = stats.byStatus || {};
+  var byOwner = stats.byProspectOwner || {};
+
+  // フィルタ: 営業マンごとのタスク
+  var filteredToday = (stats.todayTasks || []).filter(function(t) { return !filterAgent || t.agent === filterAgent; });
+  var filteredOverdue = (stats.overdue || []).filter(function(t) { return !filterAgent || t.agent === filterAgent; });
 
   return h("div", null,
+    // 営業マン切替
+    h("div", { className: "flex-between mb-16" },
+      h("div", { style: { fontSize: 16, fontWeight: 700 } }, filterAgent ? filterAgent + " のダッシュボード" : "全体ダッシュボード"),
+      h("div", { className: "flex gap-8" },
+        h("button", { className: "btn btn-sm " + (!filterAgent ? "btn-primary" : "btn-ghost"), onClick: function() { setFilterAgent(""); } }, "管理者（全体）"),
+        (agents || []).map(function(a) {
+          return h("button", { key: a.id, className: "btn btn-sm " + (filterAgent === a.name ? "btn-primary" : "btn-ghost"),
+            onClick: function() { setFilterAgent(a.name); }
+          }, a.name);
+        })
+      )
+    ),
     // 数値カード
     h("div", { className: "stat-cards" },
       h("div", { className: "stat-card" },
@@ -76,14 +94,15 @@ function DashboardPage({ onNavigate }) {
     h("div", { className: "dashboard-grid mb-16" },
       h("div", { className: "card" },
         h("div", { className: "card-header" },
-          h("div", { className: "card-title" }, "今日のコール予定 (" + (stats.todayTasks || []).length + "件)")
+          h("div", { className: "card-title" }, "今日のコール予定 (" + filteredToday.length + "件)")
         ),
-        (stats.todayTasks || []).length === 0
+        filteredToday.length === 0
           ? h("div", { className: "text-muted text-sm" }, "今日の予定はありません")
           : h("ul", { className: "task-list" },
-              stats.todayTasks.map(function(t) {
+              filteredToday.map(function(t) {
                 return h("li", { key: t.id, className: "task-item", onClick: function() { onNavigate("companies", t.id); } },
                   h("span", null, t.name),
+                  t.agent && h("span", { className: "badge badge-blue", style: { fontSize: 9, marginLeft: 4 } }, t.agent),
                   t.memo && h("span", { className: "text-muted text-xs" }, " - " + t.memo)
                 );
               })
@@ -91,14 +110,15 @@ function DashboardPage({ onNavigate }) {
       ),
       h("div", { className: "card" },
         h("div", { className: "card-header" },
-          h("div", { className: "card-title", style: { color: "#ef4444" } }, "期限切れ (" + (stats.overdue || []).length + "件)")
+          h("div", { className: "card-title", style: { color: "#ef4444" } }, "期限切れ (" + filteredOverdue.length + "件)")
         ),
-        (stats.overdue || []).length === 0
+        filteredOverdue.length === 0
           ? h("div", { className: "text-muted text-sm" }, "期限切れはありません")
           : h("ul", { className: "task-list" },
-              stats.overdue.map(function(t) {
+              filteredOverdue.map(function(t) {
                 return h("li", { key: t.id, className: "task-item", onClick: function() { onNavigate("companies", t.id); } },
                   h("span", null, t.name),
+                  t.agent && h("span", { className: "badge badge-blue", style: { fontSize: 9, marginLeft: 4 } }, t.agent),
                   h("span", { className: "overdue-tag" }, " (" + fmtDate(t.date) + "予定)")
                 );
               })
@@ -155,6 +175,20 @@ function DashboardPage({ onNavigate }) {
             );
           })
         )
+      ),
+      // 見込み者別保有数
+      h("div", { className: "card" },
+        h("div", { className: "card-header" },
+          h("div", { className: "card-title" }, "見込み者別 保有数")
+        ),
+        Object.keys(byOwner).length === 0
+          ? h("div", { className: "text-muted text-sm" }, "データなし")
+          : Object.keys(byOwner).map(function(name) {
+              return h("div", { key: name, className: "flex-between", style: { padding: "6px 0", borderBottom: "1px solid #1e2133" } },
+                h("span", { style: { fontWeight: 600 } }, name),
+                h("span", { style: { color: "#7c8cf8", fontWeight: 700 } }, byOwner[name] + "件")
+              );
+            })
       ),
       h("div", { className: "card" },
         h("div", { className: "card-header" },

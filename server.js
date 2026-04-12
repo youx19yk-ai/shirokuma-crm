@@ -49,6 +49,8 @@ async function initDB(retries = 10, delay = 3000) {
       next_call_date TEXT DEFAULT '',
       next_call_memo TEXT DEFAULT '',
       next_call_time TEXT DEFAULT '',
+      next_call_agent TEXT DEFAULT '',
+      prospect_owner TEXT DEFAULT '',
       memo TEXT DEFAULT '',
       created_at TIMESTAMP DEFAULT NOW(),
       updated_at TIMESTAMP DEFAULT NOW()
@@ -181,6 +183,8 @@ async function initDB(retries = 10, delay = 3000) {
   try { await pool.query("ALTER TABLE activities ADD COLUMN appo_type TEXT DEFAULT ''"); } catch(e) {}
   try { await pool.query("ALTER TABLE companies ADD COLUMN corp_type TEXT DEFAULT ''"); } catch(e) {}
   try { await pool.query("ALTER TABLE companies ADD COLUMN email TEXT DEFAULT ''"); } catch(e) {}
+  try { await pool.query("ALTER TABLE companies ADD COLUMN prospect_owner TEXT DEFAULT ''"); } catch(e) {}
+  try { await pool.query("ALTER TABLE companies ADD COLUMN next_call_agent TEXT DEFAULT ''"); } catch(e) {}
   try { await pool.query("ALTER TABLE activities ADD COLUMN visit_role TEXT DEFAULT ''"); } catch(e) {}
   for (const [col, def] of newCols) {
     try {
@@ -217,6 +221,8 @@ app.get('/api/companies', async (req, res) => {
       nameKana: c.name_kana,
       corpType: c.corp_type,
       email: c.email,
+      prospectOwner: c.prospect_owner,
+      nextCallAgent: c.next_call_agent,
       zip: c.zip,
       prefecture: c.prefecture,
       city: c.city,
@@ -269,11 +275,11 @@ app.post('/api/companies', async (req, res) => {
     await pool.query(`
       INSERT INTO companies (id, name, name_kana, corp_type, zip, prefecture, city, address, url, email,
         representative, status, industry, industry_detail, list_created_date,
-        next_call_date, next_call_memo, next_call_time, memo)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+        next_call_date, next_call_memo, next_call_time, next_call_agent, prospect_owner, memo)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21)
     `, [id, c.name, c.nameKana||'', c.corpType||'', c.zip||'', c.prefecture||'', c.city||'', c.address||'',
         c.url||'', c.email||'', c.representative||'', c.status||'見込み', c.industry||'', c.industryDetail||'',
-        c.listCreatedDate||'', c.nextCallDate||'', c.nextCallMemo||'', c.nextCallTime||'', c.memo||'']);
+        c.listCreatedDate||'', c.nextCallDate||'', c.nextCallMemo||'', c.nextCallTime||'', c.nextCallAgent||'', c.prospectOwner||'', c.memo||'']);
     res.json({ id });
   } catch (e) {
     console.error(e);
@@ -289,12 +295,13 @@ app.put('/api/companies/:id', async (req, res) => {
       UPDATE companies SET
         name=$1, name_kana=$2, corp_type=$3, zip=$4, prefecture=$5, city=$6, address=$7, url=$8, email=$9,
         representative=$10, status=$11, industry=$12, industry_detail=$13,
-        list_created_date=$14, next_call_date=$15, next_call_memo=$16, next_call_time=$17, memo=$18,
+        list_created_date=$14, next_call_date=$15, next_call_memo=$16, next_call_time=$17,
+        next_call_agent=$18, prospect_owner=$19, memo=$20,
         updated_at=NOW()
-      WHERE id=$19
+      WHERE id=$21
     `, [c.name, c.nameKana||'', c.corpType||'', c.zip||'', c.prefecture||'', c.city||'', c.address||'',
         c.url||'', c.email||'', c.representative||'', c.status||'見込み', c.industry||'', c.industryDetail||'',
-        c.listCreatedDate||'', c.nextCallDate||'', c.nextCallMemo||'', c.nextCallTime||'', c.memo||'', req.params.id]);
+        c.listCreatedDate||'', c.nextCallDate||'', c.nextCallMemo||'', c.nextCallTime||'', c.nextCallAgent||'', c.prospectOwner||'', c.memo||'', req.params.id]);
     res.json({ ok: true });
   } catch (e) {
     console.error(e);
@@ -647,11 +654,11 @@ app.get('/api/dashboard/stats', async (req, res) => {
     );
     const todayStr = now.toISOString().split('T')[0];
     const todayTasks = await pool.query(
-      "SELECT c.id, c.name, c.next_call_date, c.next_call_memo, c.next_call_time FROM companies c WHERE c.next_call_date = $1",
+      "SELECT c.id, c.name, c.next_call_date, c.next_call_memo, c.next_call_time, c.next_call_agent FROM companies c WHERE c.next_call_date = $1",
       [todayStr]
     );
     const overdue = await pool.query(
-      "SELECT c.id, c.name, c.next_call_date, c.next_call_memo, c.next_call_time FROM companies c WHERE c.next_call_date < $1 AND c.next_call_date != ''",
+      "SELECT c.id, c.name, c.next_call_date, c.next_call_memo, c.next_call_time, c.next_call_agent FROM companies c WHERE c.next_call_date < $1 AND c.next_call_date != ''",
       [todayStr]
     );
 
@@ -662,7 +669,9 @@ app.get('/api/dashboard/stats', async (req, res) => {
       monthAppo: parseInt(monthAppo.rows[0].count),
       monthDeals: parseInt(monthDeals.rows[0].count),
       todayTasks: todayTasks.rows.map(r => ({ id: r.id, name: r.name, date: r.next_call_date, memo: r.next_call_memo, time: r.next_call_time })),
-      overdue: overdue.rows.map(r => ({ id: r.id, name: r.name, date: r.next_call_date, memo: r.next_call_memo, time: r.next_call_time }))
+      overdue: overdue.rows.map(r => ({ id: r.id, name: r.name, date: r.next_call_date, memo: r.next_call_memo, time: r.next_call_time, agent: r.next_call_agent })),
+      todayTasksWithAgent: todayTasks.rows.map(r => ({ id: r.id, name: r.name, date: r.next_call_date, memo: r.next_call_memo, agent: r.next_call_agent })),
+      byProspectOwner: (await pool.query("SELECT prospect_owner, COUNT(*) FROM companies WHERE prospect_owner != '' GROUP BY prospect_owner ORDER BY count DESC")).rows.reduce((acc, r) => { acc[r.prospect_owner] = parseInt(r.count); return acc; }, {})
     });
   } catch (e) {
     console.error(e);

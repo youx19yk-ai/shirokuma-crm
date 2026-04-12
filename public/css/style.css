@@ -16,6 +16,8 @@ input, select, textarea, button { font-family: inherit; }
 
 /* Focus */
 input:focus, select:focus, textarea:focus { border-color: #7c8cf8 !important; outline: none; }
+input[type="date"] { color-scheme: dark; }
+input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); }
 
 /* ---- Layout ---- */
 .app { display: flex; flex-direction: column; height: 100vh; }

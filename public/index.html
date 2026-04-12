@@ -99,7 +99,7 @@ function App() {
   // ページ内容
   var content;
   if (page === "dashboard") {
-    content = h(DashboardPage, { onNavigate: navigate });
+    content = h(DashboardPage, { onNavigate: navigate, agents: agents });
   } else if (page === "companies") {
     content = h(CompaniesPage, {
       companies: companies, selectedId: selectedId,
