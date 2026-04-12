@@ -347,7 +347,7 @@ app.get('/api/companies/export', async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM companies ORDER BY created_at DESC');
     const phones = await pool.query('SELECT * FROM phone_numbers ORDER BY created_at');
-    const header = '企業名,企業名カナ,都道府県,市区町村,郵便番号,番地・建物名,電話番号,代表者,顧客分類,業種,業種詳細,リスト作成日,次回コール予定日,備考';
+    const header = '企業名,企業名カナ,都道府県,市区町村,郵便番号,番地・建物名,電話番号,代表者,見込み分類,業種,業種詳細,リスト作成日,次回コール予定日,備考';
     const csvRows = rows.map(c => {
       const ph = phones.rows.filter(p => p.company_id === c.id).map(p => p.number).join(';');
       return [c.name, c.name_kana, c.prefecture, c.city, c.zip, c.address, ph,

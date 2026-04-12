@@ -26,7 +26,7 @@ const CSV_MAP = {
   "郵便番号":"zip","住所":"address","番地・建物名":"address","都道府県":"prefecture",
   "市区町村":"city","電話番号":"tel","電話":"tel","TEL":"tel","FAX":"fax","FAX番号":"fax",
   "URL":"url","代表者":"representative","代表者名":"representative","ステータス":"status",
-  "顧客分類":"status","業種":"industry","業種詳細":"industryDetail",
+  "見込み分類":"status","業種":"industry","業種詳細":"industryDetail",
   "リスト作成日":"listCreatedDate","リスト作成年月日":"listCreatedDate",
   "最終社長通話日":"lastPresidentCall","備考":"memo","メモ":"memo"
 };
@@ -291,7 +291,7 @@ function CompanyForm({ data, onChange, agents }) {
       h(FormInput, { label: "代表者名", value: data.representative, onChange: s("representative") })
     ),
     h("div", { className: "form-row form-row-3" },
-      h(FormSelect, { label: "顧客分類", options: STATUS_OPTIONS, value: data.status, onChange: s("status") }),
+      h(FormSelect, { label: "見込み分類", options: STATUS_OPTIONS, value: data.status, onChange: s("status") }),
       h(FormSelect, { label: "業種", options: INDUSTRY_OPTIONS, value: data.industry, onChange: s("industry") }),
       h(FormInput, { label: "業種詳細", value: data.industryDetail, onChange: s("industryDetail") })
     ),

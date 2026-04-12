@@ -515,7 +515,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
     h("div", { style: { overflowX: "auto" } },
       h("table", { className: "table" },
         h("thead", null, h("tr", null,
-          ["顧客分類","企業名","都道府県","市区町村","電話番号","業種","リスト作成日","次回コール","コール数"].map(function(th) {
+          ["見込み分類","企業名","都道府県","市区町村","電話番号","業種","リスト作成日","次回コール","コール数"].map(function(th) {
             return h("th", { key: th }, th);
           })
         )),
@@ -647,7 +647,7 @@ function CsvModal({ onClose, onImport }) {
       ),
       h("div", { style: { background: "#252836", borderRadius: 8, padding: 14, marginBottom: 16, border: "1px solid #2d3148" } },
         h("div", { className: "text-sm", style: { color: "#7c8cf8", fontWeight: 700, marginBottom: 6 } }, "対応CSVヘッダー"),
-        h("div", { className: "text-xs text-muted", style: { lineHeight: 2 } }, "企業名 / 企業名カナ / 都道府県 / 市区町村 / 郵便番号 / 番地・建物名 / 電話番号 / 代表者 / 顧客分類 / 業種 / 業種詳細 / リスト作成日 / 備考")
+        h("div", { className: "text-xs text-muted", style: { lineHeight: 2 } }, "企業名 / 企業名カナ / 都道府県 / 市区町村 / 郵便番号 / 番地・建物名 / 電話番号 / 代表者 / 見込み分類 / 業種 / 業種詳細 / リスト作成日 / 備考")
       ),
       h("div", {
         onClick: function() { fileRef.current.click(); },
@@ -666,7 +666,7 @@ function CsvModal({ onClose, onImport }) {
         h("div", { style: { fontSize: 12, color: "#22c55e", marginBottom: 8, fontWeight: 600 } }, "OK: " + preview.length + "件"),
         h("div", { style: { overflowX: "auto", maxHeight: 180, border: "1px solid #2d3148", borderRadius: 6 } },
           h("table", { className: "table" },
-            h("thead", null, h("tr", null, ["企業名","都道府県","電話番号","顧客分類"].map(function(th) { return h("th", { key: th }, th); }))),
+            h("thead", null, h("tr", null, ["企業名","都道府県","電話番号","見込み分類"].map(function(th) { return h("th", { key: th }, th); }))),
             h("tbody", null, preview.slice(0, 20).map(function(r, i) {
               return h("tr", { key: i, style: { cursor: "default" } },
                 h("td", null, r.name || "―"),
