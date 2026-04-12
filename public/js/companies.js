@@ -272,12 +272,13 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
             showPhoneForm && h("div", { style: { background: "#252836", borderRadius: 4, padding: 6, marginBottom: 4 } },
               h("div", { className: "flex gap-4" },
                 h("input", { className: "form-input", style: { padding: "2px 4px", fontSize: 11, width: 90 }, value: phoneData.number, placeholder: "番号",
-                  onChange: function(e) { setPhoneData(Object.assign({}, phoneData, { number: toHalfWidth(e.target.value) })); } }),
+                  onChange: function(e) { setPhoneData(Object.assign({}, phoneData, { number: toHalfWidth(e.target.value) })); },
+                  onKeyDown: function(e) { if (e.key === "Enter") addPhone(); } }),
                 h("select", { className: "form-input", style: { padding: "2px 2px", fontSize: 10, width: 44 }, value: phoneData.type,
                   onChange: function(e) { setPhoneData(Object.assign({}, phoneData, { type: e.target.value })); } },
                   PHONE_TYPES.map(function(t) { return h("option", { key: t, value: t }, t); })
                 ),
-                h("button", { className: "btn btn-primary btn-sm", style: { padding: "1px 6px", fontSize: 10 }, onClick: addPhone }, "+")
+                h("button", { className: "btn btn-primary btn-sm", style: { padding: "1px 6px", fontSize: 10 }, onClick: addPhone }, "保存")
               )
             ),
             // URL（横1列）
@@ -296,13 +297,14 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
             showUrlForm && h("div", { style: { background: "#252836", borderRadius: 4, padding: 6, marginTop: 3 } },
               h("div", { className: "flex gap-4" },
                 h("input", { className: "form-input", style: { padding: "2px 4px", fontSize: 11, flex: 1 }, value: urlData.url, placeholder: "https://...",
-                  onChange: function(e) { setUrlData(Object.assign({}, urlData, { url: e.target.value })); } }),
+                  onChange: function(e) { setUrlData(Object.assign({}, urlData, { url: e.target.value })); },
+                  onKeyDown: function(e) { if (e.key === "Enter") addUrl(); } }),
                 h("select", { className: "form-input", style: { padding: "2px 2px", fontSize: 10, width: 80 }, value: urlData.type,
                   onChange: function(e) { setUrlData(Object.assign({}, urlData, { type: e.target.value })); } },
                   h("option", { value: "" }, "種別"),
                   URL_TYPES.map(function(t) { return h("option", { key: t, value: t }, t); })
                 ),
-                h("button", { className: "btn btn-primary btn-sm", style: { padding: "1px 6px", fontSize: 10 }, onClick: addUrl }, "+")
+                h("button", { className: "btn btn-primary btn-sm", style: { padding: "1px 6px", fontSize: 10 }, onClick: addUrl }, "保存")
               )
             )
           ),
