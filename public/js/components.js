@@ -6,7 +6,7 @@ const { useState, useEffect, useRef } = React;
 
 // 定数
 const PREFECTURES = ["北海道","青森県","岩手県","宮城県","秋田県","山形県","福島県","茨城県","栃木県","群馬県","埼玉県","千葉県","東京都","神奈川県","新潟県","富山県","石川県","福井県","山梨県","長野県","岐阜県","静岡県","愛知県","三重県","滋賀県","京都府","大阪府","兵庫県","奈良県","和歌山県","鳥取県","島根県","岡山県","広島県","山口県","徳島県","香川県","愛媛県","高知県","福岡県","佐賀県","長崎県","熊本県","大分県","宮崎県","鹿児島県","沖縄県"];
-const STATUS_OPTIONS = ["見込み","顧客","関連会社","休眠","NG"];
+const STATUS_OPTIONS = ["顧客","見込み","とりあえず保有","過去NG","アポ禁止"];
 const CORP_TYPES = ["株式会社","有限会社","合同会社","個人事業主","その他法人","チェーン店"];
 const URL_TYPES = ["HP","求人LP","受注LP","ポータルサイト","求人サイト","無料サイト"];
 const INDUSTRY_OPTIONS = ["ガテン系","IT/通信","製造業","小売業","飲食業","医療/福祉","教育","不動産","建設","運送","美容","その他"];
@@ -33,11 +33,11 @@ const CSV_MAP = {
 
 // ユーティリティ
 function statusColor(s) {
-  return { 顧客: "#22c55e", 見込み: "#3b82f6", 関連会社: "#a855f7", 休眠: "#94a3b8", NG: "#ef4444" }[s] || "#94a3b8";
+  return { 顧客: "#22c55e", 見込み: "#3b82f6", "とりあえず保有": "#94a3b8", "過去NG": "#ef4444", "アポ禁止": "#ef4444" }[s] || "#94a3b8";
 }
 
 function statusBadgeClass(s) {
-  return { 顧客: "badge-green", 見込み: "badge-blue", 関連会社: "badge-purple", 休眠: "badge-gray", NG: "badge-red" }[s] || "badge-gray";
+  return { 顧客: "badge-green", 見込み: "badge-blue", "とりあえず保有": "badge-gray", "過去NG": "badge-red", "アポ禁止": "badge-red" }[s] || "badge-gray";
 }
 
 function fmtDate(d) {
@@ -209,7 +209,7 @@ function EditableSelect({ label, value, options, onSave, vertical }) {
 }
 
 // ---- 電話番号インライン編集 ----
-function EditablePhone({ phone, onSave, onDelete }) {
+function EditablePhone({ phone, onSave, onDelete, canDelete }) {
   var _e = useState(false), editing = _e[0], setEditing = _e[1];
   var _d = useState(phone), draft = _d[0], setDraft = _d[1];
   useEffect(function() { setDraft(phone); }, [phone.number, phone.type, phone.label]);
@@ -234,12 +234,12 @@ function EditablePhone({ phone, onSave, onDelete }) {
     h("span", { className: "phone-number" }, phone.number),
     h("span", { className: "phone-type" }, phone.type),
     h("span", { className: "phone-label" }, phone.label),
-    h("button", { className: "btn btn-ghost btn-sm", style: { color: "#ef4444", padding: "0 4px", fontSize: 10 }, onClick: function(e) { e.stopPropagation(); onDelete(); } }, "削除")
+    canDelete && h("button", { className: "btn btn-ghost btn-sm", style: { color: "#ef4444", padding: "0 4px", fontSize: 10 }, onClick: function(e) { e.stopPropagation(); onDelete(); } }, "削除")
   );
 }
 
 // ---- URL インライン編集 ----
-function EditableUrl({ urlData, onSave, onDelete }) {
+function EditableUrl({ urlData, onSave, onDelete, canDelete }) {
   var _e = useState(false), editing = _e[0], setEditing = _e[1];
   var _d = useState(urlData), draft = _d[0], setDraft = _d[1];
   useEffect(function() { setDraft(urlData); }, [urlData.url, urlData.type]);
@@ -265,7 +265,7 @@ function EditableUrl({ urlData, onSave, onDelete }) {
       style: { color: "#fff", background: "#3b82f6", borderRadius: 4, padding: "1px 6px", fontSize: 10, textDecoration: "none", whiteSpace: "nowrap" },
       onClick: function(e) { e.stopPropagation(); }
     }, "アクセス"),
-    h("button", { className: "btn btn-ghost btn-sm", style: { color: "#ef4444", padding: "0 4px", fontSize: 10 }, onClick: function(e) { e.stopPropagation(); onDelete(); } }, "削除")
+    canDelete && h("button", { className: "btn btn-ghost btn-sm", style: { color: "#ef4444", padding: "0 4px", fontSize: 10 }, onClick: function(e) { e.stopPropagation(); onDelete(); } }, "削除")
   );
 }
 

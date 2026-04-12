@@ -264,8 +264,8 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
               h("button", { className: "btn btn-ghost btn-sm", style: { padding: "0px 5px", fontSize: 10 }, onClick: function() { setShowPhoneForm(!showPhoneForm); } }, "+")
             ),
             (sel.phones || []).length === 0 && !showPhoneForm && h("div", { className: "text-muted text-xs" }, "未登録"),
-            (sel.phones || []).map(function(p) {
-              return h(EditablePhone, { key: p.id, phone: p, onSave: function(updated) {
+            (sel.phones || []).map(function(p, idx) {
+              return h(EditablePhone, { key: p.id, phone: p, canDelete: idx > 0, onSave: function(updated) {
                 API.updatePhone(p.id, updated).then(function() { onReload(); });
               }, onDelete: function() { deletePhone(p.id); } });
             }),
@@ -288,8 +288,8 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
               h("button", { className: "btn btn-ghost btn-sm", style: { padding: "0px 5px", fontSize: 10 }, onClick: function() { setShowUrlForm(!showUrlForm); } }, "+")
             ),
             (sel.urls || []).length === 0 && !showUrlForm && h("div", { className: "text-muted text-xs" }, "未登録"),
-            (sel.urls || []).map(function(u) {
-              return h(EditableUrl, { key: u.id, urlData: u, onSave: function(updated) {
+            (sel.urls || []).map(function(u, idx) {
+              return h(EditableUrl, { key: u.id, urlData: u, canDelete: idx > 0, onSave: function(updated) {
                 API.updateUrl(u.id, updated).then(function() { onReload(); });
               }, onDelete: function() { deleteUrl(u.id); } });
             }),
@@ -309,8 +309,9 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
         ),
         // ---- 右カラム ----
         h("div", null,
-          h("div", { style: { marginBottom: 28 } }),
-          h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 } },
+          h("div", { style: { marginBottom: 8 } }),
+          h(EditableSelect, { label: "見込み分類", value: sel.status, options: STATUS_OPTIONS, onSave: function(v) { saveCompany(Object.assign({}, sel, { status: v })); } }),
+          h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 8 } },
             h(EditableSelect, { label: "業種", value: sel.industry, options: INDUSTRY_OPTIONS, onSave: function(v) { saveCompany(Object.assign({}, sel, { industry: v })); } }),
             h(EditableField, { label: "小分類", value: sel.industryDetail, onSave: function(v) { saveCompany(Object.assign({}, sel, { industryDetail: v })); } })
           ),
@@ -330,8 +331,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
         var tantoCount = calls.filter(function(a) { return a.callType === "担当者通話"; }).length;
         var uketsuke = calls.filter(function(a) { return a.callType === "受付通話"; }).length;
         var kessai = calls.filter(function(a) { return a.callType === "決済通話"; }).length;
-        return h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: 8, marginBottom: 8 } },
-          h(EditableSelect, { label: "顧客分類", value: sel.status, options: STATUS_OPTIONS, onSave: function(v) { saveCompany(Object.assign({}, sel, { status: v })); } }),
+        return h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, marginBottom: 8 } },
           h(EditableField, { label: "リスト作成日", value: sel.listCreatedDate, type: "date", onSave: function(v) { saveCompany(Object.assign({}, sel, { listCreatedDate: v })); } }),
           h(InfoRow, { label: "コール数", value: sel.callCount || 0 }),
           h(InfoRow, { label: "接触数", value: contactCount }),
@@ -711,7 +711,7 @@ function SearchModeView({ query, onChange, onSearch, onCancel, onSaveFilter, age
       ),
       h("div", { className: "form-row form-row-3" },
         h(FormInput, { label: "代表者名", value: query.representative || "", onChange: s("representative") }),
-        h(FormSelect, { label: "顧客分類", options: STATUS_OPTIONS, value: query.status || "", onChange: s("status") }),
+        h(FormSelect, { label: "見込み分類", options: STATUS_OPTIONS, value: query.status || "", onChange: s("status") }),
         h(FormInput, { label: "業種", value: query.industry || "", onChange: s("industry"), placeholder: "例: ガテン系" })
       ),
       h("div", { className: "form-row form-row-2" },
