@@ -443,41 +443,32 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
           ? h("div", { className: "text-muted text-sm" }, (actTab === "コール" ? "通話" : "訪問") + "履歴なし")
           : tabActs.map(function(a) {
               if (a.type === "コール") {
-                // 通話: 3列（左:日付分類結果 | 中:内容 | 右:担当削除）
-                return h("div", { key: a.id, className: "activity-item", style: { display: "grid", gridTemplateColumns: "auto 1fr auto", gap: 8 } },
-                  h("div", null,
-                    h(EditableField, { label: "日付", value: a.date, type: "date", onSave: function(v) { saveAct(a, "date", v); } }),
-                    h(EditableSelect, { label: "分類", value: a.callType, options: CALL_TYPES, onSave: function(v) { saveAct(a, "callType", v); } }),
-                    h(EditableSelect, { label: "結果", value: a.callResult, options: a.callType === "アポ" ? APPO_RESULTS : CALL_RESULTS, onSave: function(v) { saveAct(a, "callResult", v); } })
-                  ),
-                  h("div", null,
-                    h(EditableField, { label: "内容", value: a.content, onSave: function(v) { saveAct(a, "content", v); }, multi: true })
-                  ),
+                // 通話: 日付|分類|結果|内容|通話者
+                return h("div", { key: a.id, className: "activity-item", style: { display: "grid", gridTemplateColumns: "90px 80px 100px 1fr 80px", gap: 4, alignItems: "start" } },
+                  h(EditableField, { label: "日付", value: a.date, type: "date", onSave: function(v) { saveAct(a, "date", v); } }),
+                  h(EditableSelect, { label: "分類", value: a.callType, options: CALL_TYPES, onSave: function(v) { saveAct(a, "callType", v); } }),
+                  h(EditableSelect, { label: "結果", value: a.callResult, options: a.callType === "アポ" ? APPO_RESULTS : CALL_RESULTS, onSave: function(v) { saveAct(a, "callResult", v); } }),
+                  h(EditableField, { label: "内容", value: a.content, onSave: function(v) { saveAct(a, "content", v); } }),
                   h("div", null,
                     agents.length > 0
-                      ? h(EditableSelect, { label: "担当", value: a.agent, options: agentOpts, onSave: function(v) { saveAct(a, "agent", v); } })
-                      : h(EditableField, { label: "担当", value: a.agent, onSave: function(v) { saveAct(a, "agent", v); } }),
-                    h("button", { className: "btn btn-ghost btn-sm", style: { color: "#ef4444", padding: "0 4px", fontSize: 10, marginTop: 4 }, onClick: function() { deleteActivity(a.id); } }, "削除")
+                      ? h(EditableSelect, { label: "通話者", value: a.agent, options: agentOpts, onSave: function(v) { saveAct(a, "agent", v); } })
+                      : h(EditableField, { label: "通話者", value: a.agent, onSave: function(v) { saveAct(a, "agent", v); } }),
+                    h("button", { className: "btn btn-ghost btn-sm", style: { color: "#ef4444", padding: "0 4px", fontSize: 10, marginTop: 2 }, onClick: function() { deleteActivity(a.id); } }, "削除")
                   )
                 );
               } else {
-                // 訪問: 3列（左:日付結果内容 | 中右:訪問者アポリサーチ | 右:削除）
-                return h("div", { key: a.id, className: "activity-item", style: { display: "grid", gridTemplateColumns: "1fr auto auto", gap: 8 } },
+                // 訪問: 日付|訪問分類|結果|内容|訪問者|アポ|リサーチ
+                return h("div", { key: a.id, className: "activity-item", style: { display: "grid", gridTemplateColumns: "90px 90px 90px 1fr 70px 70px 70px", gap: 4, alignItems: "start" } },
+                  h(EditableField, { label: "日付", value: a.date, type: "date", onSave: function(v) { saveAct(a, "date", v); } }),
+                  h(InfoRow, { label: "訪問分類", value: a.appoType || "―" }),
                   h("div", null,
-                    h("div", { style: { display: "flex", gap: 6 } },
-                      h("div", null, h(EditableField, { label: "日付", value: a.date, type: "date", onSave: function(v) { saveAct(a, "date", v); } })),
-                      h("div", null, h(EditableSelect, { label: "結果", value: a.visitResult, options: VISIT_RESULTS, onSave: function(v) { saveAct(a, "visitResult", v); } }))
-                    ),
-                    h(EditableField, { label: "内容", value: a.content, onSave: function(v) { saveAct(a, "content", v); }, multi: true })
+                    h(EditableSelect, { label: "結果", value: a.visitResult, options: VISIT_RESULTS, onSave: function(v) { saveAct(a, "visitResult", v); } }),
+                    h("button", { className: "btn btn-ghost btn-sm", style: { color: "#ef4444", padding: "0 4px", fontSize: 10, marginTop: 2 }, onClick: function() { deleteActivity(a.id); } }, "削除")
                   ),
-                  h("div", null,
-                    agents.length > 0 ? h(EditableSelect, { label: "訪問者", value: a.visitor, options: agentOpts, onSave: function(v) { saveAct(a, "visitor", v); } }) : h(EditableField, { label: "訪問者", value: a.visitor, onSave: function(v) { saveAct(a, "visitor", v); } }),
-                    agents.length > 0 ? h(EditableSelect, { label: "アポ", value: a.appointer, options: agentOpts, onSave: function(v) { saveAct(a, "appointer", v); } }) : h(EditableField, { label: "アポ", value: a.appointer, onSave: function(v) { saveAct(a, "appointer", v); } }),
-                    agents.length > 0 ? h(EditableSelect, { label: "リサーチ", value: a.researcher, options: agentOpts, onSave: function(v) { saveAct(a, "researcher", v); } }) : h(EditableField, { label: "リサーチ", value: a.researcher, onSave: function(v) { saveAct(a, "researcher", v); } })
-                  ),
-                  h("div", { style: { display: "flex", alignItems: "end" } },
-                    h("button", { className: "btn btn-ghost btn-sm", style: { color: "#ef4444", padding: "0 4px", fontSize: 10 }, onClick: function() { deleteActivity(a.id); } }, "削除")
-                  )
+                  h(EditableField, { label: "内容", value: a.content, onSave: function(v) { saveAct(a, "content", v); } }),
+                  agents.length > 0 ? h(EditableSelect, { label: "訪問者", value: a.visitor, options: agentOpts, onSave: function(v) { saveAct(a, "visitor", v); } }) : h(EditableField, { label: "訪問者", value: a.visitor, onSave: function(v) { saveAct(a, "visitor", v); } }),
+                  agents.length > 0 ? h(EditableSelect, { label: "アポ", value: a.appointer, options: agentOpts, onSave: function(v) { saveAct(a, "appointer", v); } }) : h(EditableField, { label: "アポ", value: a.appointer, onSave: function(v) { saveAct(a, "appointer", v); } }),
+                  agents.length > 0 ? h(EditableSelect, { label: "リサーチ", value: a.researcher, options: agentOpts, onSave: function(v) { saveAct(a, "researcher", v); } }) : h(EditableField, { label: "リサーチ", value: a.researcher, onSave: function(v) { saveAct(a, "researcher", v); } })
                 );
               }
             });
