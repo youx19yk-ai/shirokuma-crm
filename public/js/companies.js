@@ -319,11 +319,23 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
       ),
 
       // その他情報
-      h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 8 } },
-        h(EditableSelect, { label: "顧客分類", value: sel.status, options: STATUS_OPTIONS, onSave: function(v) { saveCompany(Object.assign({}, sel, { status: v })); } }),
-        h(EditableField, { label: "リスト作成日", value: sel.listCreatedDate, type: "date", onSave: function(v) { saveCompany(Object.assign({}, sel, { listCreatedDate: v })); } }),
-        h(InfoRow, { label: "コール数", value: sel.callCount || 0 })
-      ),
+      (function() {
+        var calls = (sel.activities || []).filter(function(a) { return a.type === "コール"; });
+        var contactCount = calls.filter(function(a) { return a.callType === "担当者通話" || a.callType === "受付通話" || a.callType === "決済通話"; }).length;
+        var tantoCount = calls.filter(function(a) { return a.callType === "担当者通話"; }).length;
+        var uketsuke = calls.filter(function(a) { return a.callType === "受付通話"; }).length;
+        var kessai = calls.filter(function(a) { return a.callType === "決済通話"; }).length;
+        return h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: 8, marginBottom: 8 } },
+          h(EditableSelect, { label: "顧客分類", value: sel.status, options: STATUS_OPTIONS, onSave: function(v) { saveCompany(Object.assign({}, sel, { status: v })); } }),
+          h(EditableField, { label: "リスト作成日", value: sel.listCreatedDate, type: "date", onSave: function(v) { saveCompany(Object.assign({}, sel, { listCreatedDate: v })); } }),
+          h(InfoRow, { label: "コール数", value: sel.callCount || 0 }),
+          h(InfoRow, { label: "接触数", value: contactCount }),
+          h("div", { className: "field-box" },
+            h("div", { className: "info-label" }, "接触内訳"),
+            h("div", { className: "info-value text-xs" }, "担当" + tantoCount + " 受付" + uketsuke + " 決済" + kessai)
+          )
+        );
+      })(),
       h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 8 } },
         h(EditableField, { label: "次回コール", value: sel.nextCallDate, type: "date", onSave: function(v) { saveCompany(Object.assign({}, sel, { nextCallDate: v })); },
           highlight: sel.nextCallDate && sel.nextCallDate <= todayStr() }),

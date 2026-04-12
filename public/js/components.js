@@ -104,7 +104,7 @@ function FormSelect({ label, options, value, onChange, placeholder }) {
 }
 
 function InfoRow({ label, value, link, highlight }) {
-  return h("div", null,
+  return h("div", { className: "field-box" },
     h("div", { className: "info-label" }, label),
     (link && value)
       ? h("a", { href: value.startsWith("http") ? value : "https://" + value, target: "_blank", rel: "noreferrer", className: "info-value" }, value)
@@ -166,7 +166,7 @@ function EditableField({ label, value, onSave, type, link, highlight }) {
   useEffect(function() { if (editing && inputRef.current) inputRef.current.focus(); }, [editing]);
 
   if (editing) {
-    return h("div", null,
+    return h("div", { className: "field-box" },
       h("div", { className: "info-label" }, label),
       h("input", { ref: inputRef, className: "form-input", type: type || "text", value: draft,
         style: { padding: "4px 8px", fontSize: 13 },
@@ -176,7 +176,7 @@ function EditableField({ label, value, onSave, type, link, highlight }) {
       })
     );
   }
-  return h("div", { style: { cursor: "pointer" }, onClick: function() { setEditing(true); } },
+  return h("div", { className: "field-box", style: { cursor: "pointer" }, onClick: function() { setEditing(true); } },
     h("div", { className: "info-label" }, label),
     (link && value)
       ? h("a", { href: value.startsWith("http") ? value : "https://" + value, target: "_blank", rel: "noreferrer", className: "info-value", onClick: function(e) { e.stopPropagation(); } }, value)
@@ -188,7 +188,7 @@ function EditableSelect({ label, value, options, onSave }) {
   var _e = useState(false), editing = _e[0], setEditing = _e[1];
 
   if (editing) {
-    return h("div", null,
+    return h("div", { className: "field-box" },
       h("div", { className: "info-label" }, label),
       h("select", { className: "form-input", value: value || "", style: { padding: "4px 8px", fontSize: 13 },
         onChange: function(e) { onSave(e.target.value); setEditing(false); },
@@ -199,7 +199,7 @@ function EditableSelect({ label, value, options, onSave }) {
       )
     );
   }
-  return h("div", { style: { cursor: "pointer" }, onClick: function() { setEditing(true); } },
+  return h("div", { className: "field-box", style: { cursor: "pointer" }, onClick: function() { setEditing(true); } },
     h("div", { className: "info-label" }, label),
     h("div", { className: "info-value" }, value || "―")
   );
