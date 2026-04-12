@@ -184,13 +184,16 @@ function EditableField({ label, value, onSave, type, link, highlight }) {
   );
 }
 
-function EditableSelect({ label, value, options, onSave }) {
+function EditableSelect({ label, value, options, onSave, vertical }) {
   var _e = useState(false), editing = _e[0], setEditing = _e[1];
+  var cls = vertical ? "field-box" : "field-box field-inline";
+  var lblCls = vertical ? "info-label" : "info-label-inline";
+  var tag = vertical ? "div" : "span";
 
   if (editing) {
-    return h("div", { className: "field-box field-inline" },
-      h("span", { className: "info-label-inline" }, label),
-      h("select", { className: "form-input", value: value || "", style: { padding: "2px 6px", fontSize: 13, flex: 1 },
+    return h("div", { className: cls },
+      h(tag, { className: lblCls }, label),
+      h("select", { className: "form-input", value: value || "", style: { padding: "2px 6px", fontSize: 13, flex: vertical ? undefined : 1 },
         onChange: function(e) { onSave(e.target.value); setEditing(false); },
         onBlur: function() { setEditing(false); }
       },
@@ -199,9 +202,9 @@ function EditableSelect({ label, value, options, onSave }) {
       )
     );
   }
-  return h("div", { className: "field-box field-inline", style: { cursor: "pointer" }, onClick: function() { setEditing(true); } },
-    h("span", { className: "info-label-inline" }, label),
-    h("span", { className: "info-value" }, value || "―")
+  return h("div", { className: cls, style: { cursor: "pointer" }, onClick: function() { setEditing(true); } },
+    h(tag, { className: lblCls }, label),
+    h(tag, { className: "info-value" }, value || "―")
   );
 }
 

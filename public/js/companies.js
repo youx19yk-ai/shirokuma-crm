@@ -246,10 +246,10 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
           ),
           h(EditableField, { label: "フリガナ", value: sel.nameKana, onSave: function(v) { saveCompany(Object.assign({}, sel, { nameKana: v })); } }),
           h("div", { style: { display: "flex", gap: 6, alignItems: "end", marginBottom: 8 } },
-            h("div", { style: { width: 100 } }, h(EditableSelect, { label: "法人格", value: sel.corpType, options: CORP_TYPES, onSave: function(v) { saveCompany(Object.assign({}, sel, { corpType: v })); } })),
+            h("div", { style: { width: 100 } }, h(EditableSelect, { label: "法人格", value: sel.corpType, options: CORP_TYPES, vertical: true, onSave: function(v) { saveCompany(Object.assign({}, sel, { corpType: v })); } })),
             h("div", { style: { flex: 1 } }, h(EditableField, { label: "会社名", value: sel.name, onSave: function(v) { saveCompany(Object.assign({}, sel, { name: v })); } }))
           ),
-          h("div", { style: { maxWidth: 120, marginBottom: 4 } },
+          h("div", { style: { maxWidth: 180, marginBottom: 4 } },
             h(EditableField, { label: "〒", value: sel.zip, onSave: function(v) { saveCompany(Object.assign({}, sel, { zip: toHalfWidth(v) })); } })
           ),
           h(EditableField, { label: "住所", value: [sel.prefecture, sel.city, sel.address].filter(Boolean).join(" "), onSave: function(v) {
