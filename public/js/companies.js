@@ -210,61 +210,81 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
   var detail = sel && h("div", null,
     // 企業情報カード
     h("div", { className: "card" },
-      h("div", { className: "card-header" },
-        h("div", { className: "flex gap-8", style: { flexWrap: "wrap", alignItems: "center" } },
+      // ツールバー
+      h("div", { className: "flex-between mb-8" },
+        h("div", { className: "flex gap-8" },
           h("span", { className: "badge " + statusBadgeClass(sel.status) }, sel.status),
-          h("div", { style: { fontSize: 18, fontWeight: 700 } }, sel.name),
-          sel.nameKana && h("span", { className: "text-xs text-muted" }, sel.nameKana)
+          saving && h("span", { className: "text-xs text-muted" }, "保存中...")
         ),
         h("div", { className: "flex gap-8" },
-          saving && h("span", { className: "text-xs text-muted" }, "保存中..."),
           undoStack.length > 0 && h("button", { className: "btn btn-ghost btn-sm", onClick: undo }, "戻す"),
           h("button", { className: "btn btn-ghost btn-sm", style: { color: "#ef4444" }, onClick: function() { setShowConfirm(true); } }, "削除")
         )
       ),
-      // 電話番号セクション
-      h("div", { className: "mb-12" },
-        h("div", { className: "flex-between mb-8" },
-          h("div", { className: "text-sm", style: { fontWeight: 600 } }, "電話番号"),
-          h("button", { className: "btn btn-ghost btn-sm", onClick: function() { setShowPhoneForm(!showPhoneForm); } }, "+ 追加")
-        ),
-        (sel.phones || []).length === 0 && !showPhoneForm && h("div", { className: "text-muted text-sm" }, "電話番号未登録"),
-        (sel.phones || []).map(function(p) {
-          return h(EditablePhone, { key: p.id, phone: p, onSave: function(updated) {
-            API.updatePhone(p.id, updated).then(function() { onReload(); });
-          }, onDelete: function() { deletePhone(p.id); } });
-        }),
-        showPhoneForm && h("div", { style: { background: "#252836", borderRadius: 8, padding: 12, marginTop: 8 } },
-          h("div", { className: "form-row form-row-3" },
-            h(FormInput, { label: "電話番号", value: phoneData.number, onChange: function(v) { setPhoneData(Object.assign({}, phoneData, { number: v })); } }),
-            h(FormSelect, { label: "種別", options: PHONE_TYPES, value: phoneData.type, onChange: function(v) { setPhoneData(Object.assign({}, phoneData, { type: v })); } }),
-            h(FormInput, { label: "ラベル", value: phoneData.label, onChange: function(v) { setPhoneData(Object.assign({}, phoneData, { label: v })); }, placeholder: "例: 山田社長携帯" })
-          ),
-          h("div", { className: "flex gap-8" },
-            h("button", { className: "btn btn-primary btn-sm", onClick: addPhone }, "追加"),
-            h("button", { className: "btn btn-secondary btn-sm", onClick: function() { setShowPhoneForm(false); } }, "キャンセル")
-          )
-        )
+
+      // 行1: フリガナ
+      h(EditableField, { label: "フリガナ", value: sel.nameKana, onSave: function(v) { saveCompany(Object.assign({}, sel, { nameKana: v })); } }),
+
+      // 行2: 会社名 | 業種
+      h("div", { style: { display: "grid", gridTemplateColumns: "1fr 200px", gap: 12, marginBottom: 8 } },
+        h(EditableField, { label: "会社名", value: sel.name, onSave: function(v) { saveCompany(Object.assign({}, sel, { name: v })); } }),
+        h(EditableSelect, { label: "業種", value: sel.industry, options: INDUSTRY_OPTIONS, onSave: function(v) { saveCompany(Object.assign({}, sel, { industry: v })); } })
       ),
-      // 企業情報（コンパクト表示 + クリックで編集）
-      h("div", { className: "info-grid mb-12" },
-        h(EditableSelect, { label: "法人格", value: sel.corpType, options: CORP_TYPES, onSave: function(v) { saveCompany(Object.assign({}, sel, { corpType: v })); } }),
+
+      // 行3: 住所 | 代表名
+      h("div", { style: { display: "grid", gridTemplateColumns: "1fr 180px", gap: 12, marginBottom: 8 } },
         h(EditableField, { label: "住所", value: [sel.zip, sel.prefecture, sel.city, sel.address].filter(Boolean).join(" "), onSave: function(v) {
-          // 住所をパース
           var m = v.match(/^(\d{3}-?\d{4})?\s*(..?.?[都道府県])?\s*(.+?[市区町村郡])?\s*(.*)/);
           if (m) { saveCompany(Object.assign({}, sel, { zip: (m[1]||"").trim(), prefecture: (m[2]||"").trim(), city: (m[3]||"").trim(), address: (m[4]||"").trim() })); }
           else { saveCompany(Object.assign({}, sel, { address: v })); }
         }}),
-        h(EditableField, { label: "代表者", value: sel.representative, onSave: function(v) { saveCompany(Object.assign({}, sel, { representative: v })); } }),
-        h(EditableField, { label: "URL", value: sel.url, link: true, onSave: function(v) { saveCompany(Object.assign({}, sel, { url: v })); } }),
+        h(EditableField, { label: "代表者名", value: sel.representative, onSave: function(v) { saveCompany(Object.assign({}, sel, { representative: v })); } })
+      ),
+
+      // 行4: 電話番号 | メアド
+      h("div", { style: { display: "grid", gridTemplateColumns: "1fr 250px", gap: 12, marginBottom: 8 } },
+        // 電話番号
+        h("div", null,
+          h("div", { className: "flex-between", style: { marginBottom: 4 } },
+            h("div", { className: "info-label" }, "電話番号"),
+            h("button", { className: "btn btn-ghost btn-sm", style: { padding: "1px 6px", fontSize: 10 }, onClick: function() { setShowPhoneForm(!showPhoneForm); } }, "+")
+          ),
+          (sel.phones || []).length === 0 && !showPhoneForm && h("div", { className: "text-muted text-xs" }, "未登録"),
+          (sel.phones || []).map(function(p) {
+            return h(EditablePhone, { key: p.id, phone: p, onSave: function(updated) {
+              API.updatePhone(p.id, updated).then(function() { onReload(); });
+            }, onDelete: function() { deletePhone(p.id); } });
+          }),
+          showPhoneForm && h("div", { style: { background: "#252836", borderRadius: 6, padding: 8, marginTop: 4 } },
+            h("div", { className: "flex gap-4" },
+              h("input", { className: "form-input", style: { padding: "2px 6px", fontSize: 11, width: 110 }, value: phoneData.number, placeholder: "番号",
+                onChange: function(e) { setPhoneData(Object.assign({}, phoneData, { number: toHalfWidth(e.target.value) })); } }),
+              h("select", { className: "form-input", style: { padding: "2px 2px", fontSize: 10, width: 48 }, value: phoneData.type,
+                onChange: function(e) { setPhoneData(Object.assign({}, phoneData, { type: e.target.value })); } },
+                PHONE_TYPES.map(function(t) { return h("option", { key: t, value: t }, t); })
+              ),
+              h("input", { className: "form-input", style: { padding: "2px 6px", fontSize: 10, flex: 1 }, value: phoneData.label, placeholder: "ラベル",
+                onChange: function(e) { setPhoneData(Object.assign({}, phoneData, { label: e.target.value })); } }),
+              h("button", { className: "btn btn-primary btn-sm", style: { padding: "2px 8px", fontSize: 10 }, onClick: addPhone }, "追加")
+            )
+          )
+        ),
+        // メアド
+        h(EditableField, { label: "メールアドレス", value: sel.email, onSave: function(v) { saveCompany(Object.assign({}, sel, { email: v })); } })
+      ),
+
+      // その他情報
+      h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, marginBottom: 8 } },
+        h(EditableSelect, { label: "法人格", value: sel.corpType, options: CORP_TYPES, onSave: function(v) { saveCompany(Object.assign({}, sel, { corpType: v })); } }),
         h(EditableSelect, { label: "顧客分類", value: sel.status, options: STATUS_OPTIONS, onSave: function(v) { saveCompany(Object.assign({}, sel, { status: v })); } }),
-        h(EditableSelect, { label: "業種", value: sel.industry, options: INDUSTRY_OPTIONS, onSave: function(v) { saveCompany(Object.assign({}, sel, { industry: v })); } }),
-        h(EditableField, { label: "業種詳細", value: sel.industryDetail, onSave: function(v) { saveCompany(Object.assign({}, sel, { industryDetail: v })); } }),
         h(EditableField, { label: "リスト作成日", value: sel.listCreatedDate, type: "date", onSave: function(v) { saveCompany(Object.assign({}, sel, { listCreatedDate: v })); } }),
+        h(InfoRow, { label: "コール数", value: sel.callCount || 0 })
+      ),
+      h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 8 } },
         h(EditableField, { label: "次回コール", value: sel.nextCallDate, type: "date", onSave: function(v) { saveCompany(Object.assign({}, sel, { nextCallDate: v })); },
           highlight: sel.nextCallDate && sel.nextCallDate <= todayStr() }),
         h(EditableField, { label: "次回メモ", value: sel.nextCallMemo, onSave: function(v) { saveCompany(Object.assign({}, sel, { nextCallMemo: v })); } }),
-        h(InfoRow, { label: "コール数", value: sel.callCount || 0 })
+        h(EditableField, { label: "URL", value: sel.url, link: true, onSave: function(v) { saveCompany(Object.assign({}, sel, { url: v })); } })
       ),
       // 備考メモ
       h(MemoEditor, { key: "memo-" + sel.id, value: sel.memo, onSave: function(v) { saveCompany(Object.assign({}, sel, { memo: v })); } })

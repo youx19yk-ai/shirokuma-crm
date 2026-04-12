@@ -40,6 +40,7 @@ async function initDB(retries = 10, delay = 3000) {
       city TEXT DEFAULT '',
       address TEXT DEFAULT '',
       url TEXT DEFAULT '',
+      email TEXT DEFAULT '',
       representative TEXT DEFAULT '',
       status TEXT DEFAULT '見込み',
       industry TEXT DEFAULT '',
@@ -170,6 +171,7 @@ async function initDB(retries = 10, delay = 3000) {
   try { await pool.query("ALTER TABLE activities ADD COLUMN visit_result TEXT DEFAULT ''"); } catch(e) {}
   try { await pool.query("ALTER TABLE activities ADD COLUMN appo_type TEXT DEFAULT ''"); } catch(e) {}
   try { await pool.query("ALTER TABLE companies ADD COLUMN corp_type TEXT DEFAULT ''"); } catch(e) {}
+  try { await pool.query("ALTER TABLE companies ADD COLUMN email TEXT DEFAULT ''"); } catch(e) {}
   try { await pool.query("ALTER TABLE activities ADD COLUMN visit_role TEXT DEFAULT ''"); } catch(e) {}
   for (const [col, def] of newCols) {
     try {
@@ -204,6 +206,7 @@ app.get('/api/companies', async (req, res) => {
       name: c.name,
       nameKana: c.name_kana,
       corpType: c.corp_type,
+      email: c.email,
       zip: c.zip,
       prefecture: c.prefecture,
       city: c.city,
@@ -251,12 +254,12 @@ app.post('/api/companies', async (req, res) => {
   const id = c.id || genId();
   try {
     await pool.query(`
-      INSERT INTO companies (id, name, name_kana, corp_type, zip, prefecture, city, address, url,
+      INSERT INTO companies (id, name, name_kana, corp_type, zip, prefecture, city, address, url, email,
         representative, status, industry, industry_detail, list_created_date,
         next_call_date, next_call_memo, next_call_time, memo)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
     `, [id, c.name, c.nameKana||'', c.corpType||'', c.zip||'', c.prefecture||'', c.city||'', c.address||'',
-        c.url||'', c.representative||'', c.status||'見込み', c.industry||'', c.industryDetail||'',
+        c.url||'', c.email||'', c.representative||'', c.status||'見込み', c.industry||'', c.industryDetail||'',
         c.listCreatedDate||'', c.nextCallDate||'', c.nextCallMemo||'', c.nextCallTime||'', c.memo||'']);
     res.json({ id });
   } catch (e) {
@@ -271,13 +274,13 @@ app.put('/api/companies/:id', async (req, res) => {
   try {
     await pool.query(`
       UPDATE companies SET
-        name=$1, name_kana=$2, corp_type=$3, zip=$4, prefecture=$5, city=$6, address=$7, url=$8,
-        representative=$9, status=$10, industry=$11, industry_detail=$12,
-        list_created_date=$13, next_call_date=$14, next_call_memo=$15, next_call_time=$16, memo=$17,
+        name=$1, name_kana=$2, corp_type=$3, zip=$4, prefecture=$5, city=$6, address=$7, url=$8, email=$9,
+        representative=$10, status=$11, industry=$12, industry_detail=$13,
+        list_created_date=$14, next_call_date=$15, next_call_memo=$16, next_call_time=$17, memo=$18,
         updated_at=NOW()
-      WHERE id=$18
+      WHERE id=$19
     `, [c.name, c.nameKana||'', c.corpType||'', c.zip||'', c.prefecture||'', c.city||'', c.address||'',
-        c.url||'', c.representative||'', c.status||'見込み', c.industry||'', c.industryDetail||'',
+        c.url||'', c.email||'', c.representative||'', c.status||'見込み', c.industry||'', c.industryDetail||'',
         c.listCreatedDate||'', c.nextCallDate||'', c.nextCallMemo||'', c.nextCallTime||'', c.memo||'', req.params.id]);
     res.json({ ok: true });
   } catch (e) {
