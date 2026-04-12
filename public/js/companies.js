@@ -190,10 +190,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
       return h("div", { key: c.id, className: "sidebar-item" + (selectedId === c.id ? " active" : ""),
         onClick: function() { onSelect(c.id); setView("detail"); }
       },
-        h("div", { className: "flex gap-4", style: { marginBottom: 2 } },
-          h("span", { className: "badge " + statusBadgeClass(c.status), style: { fontSize: 10 } }, c.status),
-          c.prefecture && h("span", { className: "text-xs text-muted" }, c.prefecture)
-        ),
+        c.prefecture && h("div", { className: "text-xs text-muted", style: { marginBottom: 2 } }, c.prefecture),
         h("div", { className: "company-name" }, c.name),
         (c.phones && c.phones.length > 0) && h("div", { className: "company-tel" }, c.phones[0].number),
         c.nextCallDate && h("div", { className: "text-xs", style: { color: c.nextCallDate < todayStr() ? "#ef4444" : "#92863a", marginTop: 2 } },
@@ -467,7 +464,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
     h("div", { style: { overflowX: "auto" } },
       h("table", { className: "table" },
         h("thead", null, h("tr", null,
-          ["見込み分類","企業名","都道府県","市区町村","電話番号","業種","リスト作成日","次回コール","コール数"].map(function(th) {
+          ["企業名","都道府県","市区町村","電話番号","業種","リスト作成日","次回コール","コール数"].map(function(th) {
             return h("th", { key: th }, th);
           })
         )),
@@ -475,7 +472,6 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
           filtered.map(function(c) {
             var phone = (c.phones && c.phones.length > 0) ? c.phones[0].number : "―";
             return h("tr", { key: c.id, onClick: function() { onSelect(c.id); setView("detail"); } },
-              h("td", null, h("span", { className: "badge " + statusBadgeClass(c.status) }, c.status)),
               h("td", { style: { fontWeight: 600, whiteSpace: "nowrap" } }, c.name),
               h("td", { className: "text-muted" }, c.prefecture || "―"),
               h("td", { className: "text-muted" }, c.city || "―"),
@@ -618,13 +614,12 @@ function CsvModal({ onClose, onImport }) {
         h("div", { style: { fontSize: 12, color: "#22c55e", marginBottom: 8, fontWeight: 600 } }, "OK: " + preview.length + "件"),
         h("div", { style: { overflowX: "auto", maxHeight: 180, border: "1px solid #2d3148", borderRadius: 6 } },
           h("table", { className: "table" },
-            h("thead", null, h("tr", null, ["企業名","都道府県","電話番号","見込み分類"].map(function(th) { return h("th", { key: th }, th); }))),
+            h("thead", null, h("tr", null, ["企業名","都道府県","電話番号"].map(function(th) { return h("th", { key: th }, th); }))),
             h("tbody", null, preview.slice(0, 20).map(function(r, i) {
               return h("tr", { key: i, style: { cursor: "default" } },
                 h("td", null, r.name || "―"),
                 h("td", { className: "text-muted" }, r.prefecture || "―"),
-                h("td", { className: "text-muted" }, r.tel || "―"),
-                h("td", null, h("span", { className: "badge " + statusBadgeClass(r.status) }, r.status || "見込み"))
+                h("td", { className: "text-muted" }, r.tel || "―")
               );
             }))
           )
