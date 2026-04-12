@@ -3,8 +3,8 @@
 // ============================================================
 function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plans, creditCompanies, savedFilters, onSaveFilter }) {
   var _v = useState("detail"), view = _v[0], setView = _v[1];
-  var _em = useState(false), editMode = _em[0], setEditMode = _em[1];
   var _ed = useState(null), editData = _ed[0], setEditData = _ed[1];
+  var _undo = useState([]), undoStack = _undo[0], setUndoStack = _undo[1];
   var _sm = useState(false), searchMode = _sm[0], setSearchMode = _sm[1];
   var _sq = useState({}), searchQuery = _sq[0], setSearchQuery = _sq[1];
   var _actTab = useState("コール"), actTab = _actTab[0], setActTab = _actTab[1];
@@ -59,14 +59,42 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
   var activeCount = Object.values(searchQuery).filter(Boolean).length;
 
   // 保存
-  var save = function() {
+  // インライン保存（デバウンス付き）
+  var saveTimer = useRef(null);
+  var lastSavedRef = useRef(null);
+  var saveCompany = function(data) {
+    // undo用に現在の状態を保存（初回のみ）
+    if (!lastSavedRef.current || lastSavedRef.current !== data.id) {
+      if (sel) setUndoStack(function(prev) { return [{ type: "company", id: sel.id, data: Object.assign({}, sel) }].concat(prev).slice(0, 20); });
+      lastSavedRef.current = data.id;
+    }
     setSaving(true);
-    var fn = editData.id ? API.updateCompany(editData.id, editData) : API.createCompany(editData);
-    fn.then(function(res) {
-      if (!editData.id) { onSelect(res.id); }
-      setEditMode(false); setEditData(null); setSaving(false);
-      onReload();
-    }).catch(function(e) { alert("保存失敗: " + e.message); setSaving(false); });
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(function() {
+      API.updateCompany(data.id, data).then(function() {
+        setSaving(false); lastSavedRef.current = null; onReload();
+      }).catch(function(e) { alert("保存失敗: " + e.message); setSaving(false); });
+    }, 800);
+  };
+
+  // 新規企業保存
+  var saveNewCompany = function() {
+    setSaving(true);
+    API.createCompany(editData).then(function(res) {
+      onSelect(res.id); setEditData(null); setView("detail"); setSaving(false); onReload();
+    }).catch(function(e) { alert("登録失敗: " + e.message); setSaving(false); });
+  };
+
+  // ひとつ戻す
+  var undo = function() {
+    if (undoStack.length === 0) return;
+    var last = undoStack[0];
+    setUndoStack(function(prev) { return prev.slice(1); });
+    if (last.type === "company") {
+      API.updateCompany(last.id, last.data).then(function() { onReload(); });
+    } else if (last.type === "activity-delete") {
+      API.addActivity(last.companyId, last.data).then(function() { onReload(); });
+    }
   };
 
   // 削除
@@ -77,10 +105,6 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
   };
 
   // メモ保存
-  var saveMemo = function(memo) {
-    var updated = Object.assign({}, sel, { memo: memo });
-    API.updateCompany(sel.id, updated).then(function() { onReload(); });
-  };
 
   // 営業行動追加
   var addActivity = function() {
@@ -106,8 +130,10 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
     }).catch(function(e) { alert("保存失敗: " + e.message); });
   };
 
-  // 行動削除
+  // 行動削除（undo対応）
   var deleteActivity = function(actId) {
+    var act = sel && (sel.activities || []).find(function(a) { return a.id === actId; });
+    if (act) setUndoStack(function(prev) { return [{ type: "activity-delete", companyId: sel.id, data: act }].concat(prev).slice(0, 20); });
     API.deleteActivity(actId).then(function() { onReload(); });
   };
 
@@ -185,69 +211,49 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
     // 企業情報カード
     h("div", { className: "card" },
       h("div", { className: "card-header" },
-        h("div", null,
-          h("div", { className: "flex gap-8 mb-8", style: { flexWrap: "wrap" } },
-            h("span", { className: "badge " + statusBadgeClass(sel.status) }, sel.status),
-            h("span", { className: "text-xs text-muted" }, "ID: " + sel.id),
-            sel.listCreatedDate && h("span", { className: "badge badge-yellow" }, "リスト: " + fmtDate(sel.listCreatedDate))
-          ),
-          h("div", { style: { fontSize: 20, fontWeight: 700 } }, sel.name),
-          sel.nameKana && h("div", { className: "text-xs text-muted" }, sel.nameKana)
+        h("div", { className: "flex gap-8", style: { flexWrap: "wrap", alignItems: "center" } },
+          h("span", { className: "badge " + statusBadgeClass(sel.status) }, sel.status),
+          h("div", { style: { fontSize: 18, fontWeight: 700 } }, sel.name),
+          sel.nameKana && h("span", { className: "text-xs text-muted" }, sel.nameKana)
         ),
-        !editMode && h("div", { className: "flex gap-8" },
-          h("button", { className: "btn btn-secondary btn-sm", onClick: function() { setEditData(Object.assign({}, sel)); setEditMode(true); } }, "編集"),
+        h("div", { className: "flex gap-8" },
+          saving && h("span", { className: "text-xs text-muted" }, "保存中..."),
+          undoStack.length > 0 && h("button", { className: "btn btn-ghost btn-sm", onClick: undo }, "戻す"),
           h("button", { className: "btn btn-ghost btn-sm", style: { color: "#ef4444" }, onClick: function() { setShowConfirm(true); } }, "削除")
         )
       ),
-      editMode
-        ? h("div", null,
-            h(CompanyForm, { data: editData, onChange: setEditData, agents: agents }),
-            h("div", { className: "flex gap-10 mt-12" },
-              h("button", { className: "btn btn-primary", onClick: save, disabled: saving }, saving ? "保存中..." : "保存"),
-              h("button", { className: "btn btn-secondary", onClick: function() { setEditMode(false); } }, "キャンセル")
-            )
+      // 電話番号セクション
+      h("div", { className: "mb-12" },
+        h("div", { className: "flex-between mb-8" },
+          h("div", { className: "text-sm", style: { fontWeight: 600 } }, "電話番号"),
+          h("button", { className: "btn btn-ghost btn-sm", onClick: function() { setShowPhoneForm(!showPhoneForm); } }, "+ 追加")
+        ),
+        (sel.phones || []).length === 0 && !showPhoneForm && h("div", { className: "text-muted text-sm" }, "電話番号未登録"),
+        (sel.phones || []).map(function(p) {
+          return h("div", { key: p.id, className: "phone-row" },
+            h("span", { className: "phone-number" }, p.number),
+            h("span", { className: "phone-type" }, p.type),
+            h("span", { className: "phone-label" }, p.label),
+            h("button", { className: "btn-icon btn-sm", onClick: function() { deletePhone(p.id); } }, "×")
+          );
+        }),
+        showPhoneForm && h("div", { style: { background: "#252836", borderRadius: 8, padding: 12, marginTop: 8 } },
+          h("div", { className: "form-row form-row-3" },
+            h(FormInput, { label: "電話番号", value: phoneData.number, onChange: function(v) { setPhoneData(Object.assign({}, phoneData, { number: v })); } }),
+            h(FormSelect, { label: "種別", options: PHONE_TYPES, value: phoneData.type, onChange: function(v) { setPhoneData(Object.assign({}, phoneData, { type: v })); } }),
+            h(FormInput, { label: "ラベル", value: phoneData.label, onChange: function(v) { setPhoneData(Object.assign({}, phoneData, { label: v })); }, placeholder: "例: 山田社長携帯" })
+          ),
+          h("div", { className: "flex gap-8" },
+            h("button", { className: "btn btn-primary btn-sm", onClick: addPhone }, "追加"),
+            h("button", { className: "btn btn-secondary btn-sm", onClick: function() { setShowPhoneForm(false); } }, "キャンセル")
           )
-        : h("div", null,
-            // 電話番号セクション
-            h("div", { className: "mb-12" },
-              h("div", { className: "flex-between mb-8" },
-                h("div", { className: "text-sm", style: { fontWeight: 600 } }, "電話番号"),
-                h("button", { className: "btn btn-ghost btn-sm", onClick: function() { setShowPhoneForm(!showPhoneForm); } }, "+ 追加")
-              ),
-              (sel.phones || []).length === 0 && !showPhoneForm && h("div", { className: "text-muted text-sm" }, "電話番号未登録"),
-              (sel.phones || []).map(function(p) {
-                return h("div", { key: p.id, className: "phone-row" },
-                  h("span", { className: "phone-number" }, p.number),
-                  h("span", { className: "phone-type" }, p.type),
-                  h("span", { className: "phone-label" }, p.label),
-                  h("button", { className: "btn-icon btn-sm", onClick: function() { deletePhone(p.id); } }, "×")
-                );
-              }),
-              showPhoneForm && h("div", { style: { background: "#252836", borderRadius: 8, padding: 12, marginTop: 8 } },
-                h("div", { className: "form-row form-row-3" },
-                  h(FormInput, { label: "電話番号", value: phoneData.number, onChange: function(v) { setPhoneData(Object.assign({}, phoneData, { number: v })); } }),
-                  h(FormSelect, { label: "種別", options: PHONE_TYPES, value: phoneData.type, onChange: function(v) { setPhoneData(Object.assign({}, phoneData, { type: v })); } }),
-                  h(FormInput, { label: "ラベル", value: phoneData.label, onChange: function(v) { setPhoneData(Object.assign({}, phoneData, { label: v })); }, placeholder: "例: 山田社長携帯" })
-                ),
-                h("div", { className: "flex gap-8" },
-                  h("button", { className: "btn btn-primary btn-sm", onClick: addPhone }, "追加"),
-                  h("button", { className: "btn btn-secondary btn-sm", onClick: function() { setShowPhoneForm(false); } }, "キャンセル")
-                )
-              )
-            ),
-            // 基本情報
-            h("div", { className: "info-grid mb-12" },
-              h(InfoRow, { label: "住所", value: [sel.prefecture, sel.city, sel.address].filter(Boolean).join(" ") }),
-              h(InfoRow, { label: "代表者", value: sel.representative }),
-              h(InfoRow, { label: "URL", value: sel.url, link: true }),
-              h(InfoRow, { label: "業種", value: sel.industry + (sel.industryDetail ? " / " + sel.industryDetail : "") }),
-              h(InfoRow, { label: "次回コール", value: sel.nextCallDate ? fmtDate(sel.nextCallDate) + (sel.nextCallTime ? " " + sel.nextCallTime : "") + (sel.nextCallMemo ? " 「" + sel.nextCallMemo + "」" : "") : "―",
-                highlight: sel.nextCallDate && sel.nextCallDate <= todayStr() }),
-              h(InfoRow, { label: "コール数", value: sel.callCount || 0 })
-            ),
-            // 備考メモ
-            h(MemoEditor, { key: "memo-" + sel.id, value: sel.memo, onSave: saveMemo })
-          )
+        )
+      ),
+      // 企業情報フォーム（常に編集可能）
+      h(CompanyForm, { data: sel, onChange: function(updater) {
+        var updated = updater(sel);
+        saveCompany(updated);
+      }, agents: agents })
     ),
 
     // 営業履歴カード（タブ切替）
@@ -412,7 +418,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
     h("div", { className: "card-title mb-16", style: { color: "#7c8cf8" } }, "新規企業登録"),
     editData && h(CompanyForm, { data: editData, onChange: setEditData, agents: agents }),
     h("div", { className: "flex gap-12 mt-16" },
-      h("button", { className: "btn btn-primary", onClick: save, disabled: saving }, saving ? "登録中..." : "登録する"),
+      h("button", { className: "btn btn-primary", onClick: saveNewCompany, disabled: saving }, saving ? "登録中..." : "登録する"),
       h("button", { className: "btn btn-secondary", onClick: function() { setView("detail"); setEditData(null); } }, "キャンセル")
     )
   );
