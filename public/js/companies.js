@@ -253,57 +253,6 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
                 else { saveCompany(Object.assign({}, sel, { address: v })); }
               }}))
             ),
-            // 電話番号（横1列）
-            h("div", { style: { display: "flex", gap: 4, alignItems: "start", marginBottom: 4 } },
-              h("div", { className: "info-label", style: { paddingTop: 4, whiteSpace: "nowrap" } }, "TEL"),
-              h("div", { style: { flex: 1 } },
-                (sel.phones || []).map(function(p, idx) {
-                  return h(EditablePhone, { key: p.id, phone: p, canDelete: idx > 0, onSave: function(updated) {
-                    API.updatePhone(p.id, updated).then(function() { onReload(); });
-                  }, onDelete: function() { deletePhone(p.id); } });
-                }),
-                (sel.phones || []).length === 0 && h("div", { className: "text-muted text-xs" }, "未登録")
-              ),
-              h("button", { className: "btn btn-ghost btn-sm", style: { padding: "0px 5px", fontSize: 10 }, onClick: function() { setShowPhoneForm(!showPhoneForm); } }, "+")
-            ),
-            showPhoneForm && h("div", { style: { background: "#252836", borderRadius: 4, padding: 6, marginBottom: 4 } },
-              h("div", { className: "flex gap-4" },
-                h("input", { className: "form-input", style: { padding: "2px 4px", fontSize: 11, width: 90 }, value: phoneData.number, placeholder: "番号",
-                  onChange: function(e) { setPhoneData(Object.assign({}, phoneData, { number: toHalfWidth(e.target.value) })); },
-                  onKeyDown: function(e) { if (e.key === "Enter") addPhone(); } }),
-                h("select", { className: "form-input", style: { padding: "2px 2px", fontSize: 10, width: 44 }, value: phoneData.type,
-                  onChange: function(e) { setPhoneData(Object.assign({}, phoneData, { type: e.target.value })); } },
-                  PHONE_TYPES.map(function(t) { return h("option", { key: t, value: t }, t); })
-                ),
-                h("button", { className: "btn btn-primary btn-sm", style: { padding: "1px 6px", fontSize: 10 }, onClick: addPhone }, "保存")
-              )
-            ),
-            // URL（横1列）
-            h("div", { style: { display: "flex", gap: 4, alignItems: "start" } },
-              h("div", { className: "info-label", style: { paddingTop: 4, whiteSpace: "nowrap" } }, "URL"),
-              h("div", { style: { flex: 1 } },
-                (sel.urls || []).map(function(u, idx) {
-                  return h(EditableUrl, { key: u.id, urlData: u, canDelete: idx > 0, onSave: function(updated) {
-                    API.updateUrl(u.id, updated).then(function() { onReload(); });
-                  }, onDelete: function() { deleteUrl(u.id); } });
-                }),
-                (sel.urls || []).length === 0 && h("div", { className: "text-muted text-xs" }, "未登録")
-              ),
-              h("button", { className: "btn btn-ghost btn-sm", style: { padding: "0px 5px", fontSize: 10 }, onClick: function() { setShowUrlForm(!showUrlForm); } }, "+")
-            ),
-            showUrlForm && h("div", { style: { background: "#252836", borderRadius: 4, padding: 6, marginTop: 3 } },
-              h("div", { className: "flex gap-4" },
-                h("input", { className: "form-input", style: { padding: "2px 4px", fontSize: 11, flex: 1 }, value: urlData.url, placeholder: "https://...",
-                  onChange: function(e) { setUrlData(Object.assign({}, urlData, { url: e.target.value })); },
-                  onKeyDown: function(e) { if (e.key === "Enter") addUrl(); } }),
-                h("select", { className: "form-input", style: { padding: "2px 2px", fontSize: 10, width: 80 }, value: urlData.type,
-                  onChange: function(e) { setUrlData(Object.assign({}, urlData, { type: e.target.value })); } },
-                  h("option", { value: "" }, "種別"),
-                  URL_TYPES.map(function(t) { return h("option", { key: t, value: t }, t); })
-                ),
-                h("button", { className: "btn btn-primary btn-sm", style: { padding: "1px 6px", fontSize: 10 }, onClick: addUrl }, "保存")
-              )
-            )
           ),
           // ---- 右カラム ----
           h("div", null,
@@ -317,22 +266,73 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
             ),
             h("div", { style: { marginTop: 4 } },
               h(EditableField, { label: "メールアドレス", value: sel.email, onSave: function(v) { saveCompany(Object.assign({}, sel, { email: v })); } })
-            ),
-            // コール数・接触数（電話番号の右）
-            h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 4 } },
-              h(InfoRow, { label: "コール数", value: sel.callCount || 0 }),
-              h(InfoRow, { label: "接触数", value: contactCount })
-            ),
-            // 接触内訳（URLの右）
-            h("div", { style: { marginTop: 4 } },
-              h("div", { className: "field-box field-inline" },
-                h("span", { className: "info-label-inline" }, "接触内訳"),
-                h("span", { className: "info-value text-xs" }, "担当" + tantoCount + " 受付" + uketsuke + " 決済" + kessai)
-              )
             )
           )
         );
       })(),
+      // TEL | URL（全幅2列）
+      h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 8 } },
+        // TEL
+        h("div", null,
+          h("div", { className: "flex-between", style: { marginBottom: 2 } },
+            h("div", { className: "info-label" }, "TEL"),
+            h("button", { className: "btn btn-ghost btn-sm", style: { padding: "0px 5px", fontSize: 10 }, onClick: function() { setShowPhoneForm(!showPhoneForm); } }, "+")
+          ),
+          (sel.phones || []).map(function(p, idx) {
+            return h(EditablePhone, { key: p.id, phone: p, canDelete: idx > 0, onSave: function(updated) {
+              API.updatePhone(p.id, updated).then(function() { onReload(); });
+            }, onDelete: function() { deletePhone(p.id); } });
+          }),
+          (sel.phones || []).length === 0 && h("div", { className: "text-muted text-xs" }, "未登録"),
+          showPhoneForm && h("div", { style: { background: "#252836", borderRadius: 4, padding: 6, marginTop: 3 } },
+            h("div", { className: "flex gap-4" },
+              h("input", { className: "form-input", style: { padding: "2px 4px", fontSize: 11, width: 90 }, value: phoneData.number, placeholder: "番号",
+                onChange: function(e) { setPhoneData(Object.assign({}, phoneData, { number: toHalfWidth(e.target.value) })); },
+                onKeyDown: function(e) { if (e.key === "Enter") addPhone(); } }),
+              h("select", { className: "form-input", style: { padding: "2px 2px", fontSize: 10, width: 44 }, value: phoneData.type,
+                onChange: function(e) { setPhoneData(Object.assign({}, phoneData, { type: e.target.value })); } },
+                PHONE_TYPES.map(function(t) { return h("option", { key: t, value: t }, t); })
+              ),
+              h("button", { className: "btn btn-primary btn-sm", style: { padding: "1px 6px", fontSize: 10 }, onClick: addPhone }, "保存")
+            )
+          )
+        ),
+        // URL
+        h("div", null,
+          h("div", { className: "flex-between", style: { marginBottom: 2 } },
+            h("div", { className: "info-label" }, "URL"),
+            h("button", { className: "btn btn-ghost btn-sm", style: { padding: "0px 5px", fontSize: 10 }, onClick: function() { setShowUrlForm(!showUrlForm); } }, "+")
+          ),
+          (sel.urls || []).map(function(u, idx) {
+            return h(EditableUrl, { key: u.id, urlData: u, canDelete: idx > 0, onSave: function(updated) {
+              API.updateUrl(u.id, updated).then(function() { onReload(); });
+            }, onDelete: function() { deleteUrl(u.id); } });
+          }),
+          (sel.urls || []).length === 0 && h("div", { className: "text-muted text-xs" }, "未登録"),
+          showUrlForm && h("div", { style: { background: "#252836", borderRadius: 4, padding: 6, marginTop: 3 } },
+            h("div", { className: "flex gap-4" },
+              h("input", { className: "form-input", style: { padding: "2px 4px", fontSize: 11, flex: 1 }, value: urlData.url, placeholder: "https://...",
+                onChange: function(e) { setUrlData(Object.assign({}, urlData, { url: e.target.value })); },
+                onKeyDown: function(e) { if (e.key === "Enter") addUrl(); } }),
+              h("select", { className: "form-input", style: { padding: "2px 2px", fontSize: 10, width: 80 }, value: urlData.type,
+                onChange: function(e) { setUrlData(Object.assign({}, urlData, { type: e.target.value })); } },
+                h("option", { value: "" }, "種別"),
+                URL_TYPES.map(function(t) { return h("option", { key: t, value: t }, t); })
+              ),
+              h("button", { className: "btn btn-primary btn-sm", style: { padding: "1px 6px", fontSize: 10 }, onClick: addUrl }, "保存")
+            )
+          )
+        )
+      ),
+      // コール数 | 接触数 | 接触内訳（全幅）
+      h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginTop: 8 } },
+        h(InfoRow, { label: "コール数", value: sel.callCount || 0 }),
+        h(InfoRow, { label: "接触数", value: contactCount }),
+        h("div", { className: "field-box field-inline" },
+          h("span", { className: "info-label-inline" }, "接触内訳"),
+          h("span", { className: "info-value text-xs" }, "担当" + tantoCount + " 受付" + uketsuke + " 決済" + kessai)
+        )
+      ),
       // 次回コール
       h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginTop: 8, marginBottom: 8 } },
         h(EditableField, { label: "次回コール", value: sel.nextCallDate, type: "date", onSave: function(v) { saveCompany(Object.assign({}, sel, { nextCallDate: v })); },
