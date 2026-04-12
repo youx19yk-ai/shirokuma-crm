@@ -213,7 +213,7 @@ textarea.form-input { resize: vertical; }
 
 /* ---- Activity timeline ---- */
 .activity-item {
-  display: grid; grid-template-columns: 110px 1fr 70px 24px; gap: 8px; align-items: center;
+  display: grid; grid-template-columns: 100px 90px 110px 1fr 60px 24px; gap: 6px; align-items: center;
   padding: 10px 12px; margin-bottom: 6px;
   border: 1px solid #4a4f6a; border-radius: 6px; cursor: pointer;
 }

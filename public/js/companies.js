@@ -338,18 +338,32 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
         return tabActs.length === 0
           ? h("div", { className: "text-muted text-sm" }, (actTab === "コール" ? "通話" : "訪問") + "履歴なし")
           : tabActs.map(function(a) {
-              return h("div", { key: a.id, className: "activity-item", style: { cursor: "pointer" }, onClick: function() { setEditActData(Object.assign({}, a)); } },
-                h("div", { className: "activity-date" }, fmtDate(a.date), a.time && h("span", { className: "text-xs text-muted" }, " " + a.time)),
+              var vrColor = a.visitResult === "契約" ? "#22c55e" : a.visitResult === "NG" || a.visitResult === "前確NG" ? "#ef4444" : a.visitResult === "検討" ? "#f97316" : a.visitResult === "未実施" ? "#64748b" : "#94a3b8";
+              var crColor = a.callResult && (a.callResult.includes("アポ") ? "#22c55e" : a.callResult.includes("再コール") ? "#f97316" : a.callResult.includes("諦め") || a.callResult.includes("YES取れず") ? "#ef4444" : "#94a3b8");
+              return h("div", { key: a.id, className: "activity-item", onClick: function() { setEditActData(Object.assign({}, a)); } },
+                // 列1: 日付
+                h("div", { className: "activity-date" }, fmtDate(a.date), a.time && h("div", { className: "text-xs text-muted" }, a.time)),
+                // 列2: 分類/ロール
+                h("div", { style: { fontSize: 12 } },
+                  a.type === "コール" && h("span", { className: "text-muted" }, a.callType || "―"),
+                  (a.type === "アポ" || a.type === "商談") && h("span", { className: "badge badge-purple", style: { fontSize: 10 } }, a.visitRole || "―")
+                ),
+                // 列3: 結果/アポ種別
+                h("div", { style: { fontSize: 12 } },
+                  a.type === "コール" && h("span", { style: { color: crColor, fontWeight: 600 } }, a.callResult || "―"),
+                  (a.type === "アポ" || a.type === "商談") && h("div", null,
+                    h("span", { style: { color: vrColor, fontWeight: 600 } }, a.visitResult || "未実施"),
+                    a.appoType && h("div", { className: "text-xs", style: { color: "#7c8cf8" } }, a.appoType)
+                  )
+                ),
+                // 列4: 内容
                 h("div", { className: "activity-content" },
-                  a.type === "コール" && a.callType && h("span", { className: "text-muted text-xs" }, a.callType + " → "),
-                  a.type === "コール" && a.callResult && h("span", { style: { color: a.callResult.includes("アポ") ? "#22c55e" : a.callResult.includes("再コール") ? "#f97316" : "#94a3b8", fontWeight: 600, fontSize: 12 } }, a.callResult + " "),
-                  (a.type === "アポ" || a.type === "商談") && a.visitRole && h("span", { className: "badge badge-purple", style: { fontSize: 10, marginRight: 4 } }, a.visitRole),
-                  (a.type === "アポ" || a.type === "商談") && a.appoType && h("span", { className: "badge badge-blue", style: { fontSize: 10, marginRight: 4 } }, a.appoType),
-                  (a.type === "アポ" || a.type === "商談") && h("span", { style: { color: a.visitResult === "契約" ? "#22c55e" : a.visitResult === "NG" || a.visitResult === "前確NG" ? "#ef4444" : a.visitResult === "検討" ? "#f97316" : a.visitResult === "未実施" ? "#64748b" : "#94a3b8", fontWeight: 600, fontSize: 12, marginRight: 4 } }, "[" + (a.visitResult || "未実施") + "] "),
                   (a.type === "アポ" || a.type === "商談") && a.location && h("span", { className: "text-muted text-xs" }, a.location + " "),
                   a.content
                 ),
+                // 列5: 担当者
                 h("div", { className: "activity-agent" }, a.agent),
+                // 列6: 削除
                 h("button", { className: "btn-icon", style: { fontSize: 12 }, onClick: function(e) { e.stopPropagation(); deleteActivity(a.id); } }, "×")
               );
             });
