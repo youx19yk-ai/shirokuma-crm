@@ -7,7 +7,7 @@ const { useState, useEffect, useRef } = React;
 // 定数
 const PREFECTURES = ["北海道","青森県","岩手県","宮城県","秋田県","山形県","福島県","茨城県","栃木県","群馬県","埼玉県","千葉県","東京都","神奈川県","新潟県","富山県","石川県","福井県","山梨県","長野県","岐阜県","静岡県","愛知県","三重県","滋賀県","京都府","大阪府","兵庫県","奈良県","和歌山県","鳥取県","島根県","岡山県","広島県","山口県","徳島県","香川県","愛媛県","高知県","福岡県","佐賀県","長崎県","熊本県","大分県","宮崎県","鹿児島県","沖縄県"];
 const STATUS_OPTIONS = ["見込み","顧客","関連会社","休眠","NG"];
-const CORP_TYPES = ["株式会社","有限会社","合同会社","個人事業主"];
+const CORP_TYPES = ["株式会社","有限会社","合同会社","個人事業主","その他法人","チェーン店"];
 const URL_TYPES = ["HP","求人LP","受注LP","ポータルサイト","求人サイト","無料サイト"];
 const INDUSTRY_OPTIONS = ["ガテン系","IT/通信","製造業","小売業","飲食業","医療/福祉","教育","不動産","建設","運送","美容","その他"];
 const CALL_TYPES = ["アポ","決済通話","担当者通話","受付通話","不通"];
@@ -254,12 +254,14 @@ function EditableUrl({ urlData, onSave, onDelete }) {
       )
     );
   }
+  var href = urlData.url && (urlData.url.startsWith("http") ? urlData.url : "https://" + urlData.url);
   return h("div", { className: "phone-row", style: { cursor: "pointer" }, onClick: function() { setEditing(true); } },
-    h("a", { href: urlData.url.startsWith("http") ? urlData.url : "https://" + urlData.url, target: "_blank", rel: "noreferrer",
-      style: { color: "#7c8cf8", fontSize: 11, textDecoration: "none", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+    h("span", { style: { color: "#e2e8f0", fontSize: 11, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, urlData.url || "―"),
+    h("span", { style: { color: "#94a3b8", fontSize: 10, minWidth: 55 } }, urlData.type || "―"),
+    urlData.url && h("a", { href: href, target: "_blank", rel: "noreferrer",
+      style: { color: "#fff", background: "#3b82f6", borderRadius: 4, padding: "1px 6px", fontSize: 10, textDecoration: "none", whiteSpace: "nowrap" },
       onClick: function(e) { e.stopPropagation(); }
-    }, urlData.url || "―"),
-    h("span", { style: { color: "#94a3b8", fontSize: 10, minWidth: 60 } }, urlData.type || "―"),
+    }, "アクセス"),
     h("button", { className: "btn-icon btn-sm", onClick: function(e) { e.stopPropagation(); onDelete(); } }, "×")
   );
 }
