@@ -212,7 +212,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
           saving && h("span", { className: "text-xs text-muted" }, "保存中...")
         ),
         h("div", { className: "flex gap-8" },
-          undoStack.length > 0 && h("button", { className: "btn btn-ghost btn-sm", onClick: undo }, "戻す"),
+          h("button", { className: "btn btn-ghost btn-sm", style: { opacity: undoStack.length > 0 ? 1 : 0.3 }, onClick: undo, disabled: undoStack.length === 0 }, "戻す"),
           h("button", { className: "btn btn-ghost btn-sm", style: { color: "#ef4444" }, onClick: function() { setShowConfirm(true); } }, "削除")
         )
       ),
@@ -227,74 +227,78 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
         return h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 } },
           // ---- 左カラム ----
           h("div", null,
-            h("div", { style: { marginBottom: 4 } },
-              agents.length > 0
+            h("div", { style: { display: "flex", gap: 8, marginBottom: 4 } },
+              h("div", { style: { flex: 1 } }, agents.length > 0
                 ? h(EditableSelect, { label: "見込み者", value: sel.prospectOwner, options: agents.map(function(a) { return a.name; }), onSave: function(v) { saveCompany(Object.assign({}, sel, { prospectOwner: v })); } })
                 : h(EditableField, { label: "見込み者", value: sel.prospectOwner, onSave: function(v) { saveCompany(Object.assign({}, sel, { prospectOwner: v })); } })
-            ),
-            h("div", { style: { marginBottom: 4 } },
-              h(EditableField, { label: "リスト作成日", value: sel.listCreatedDate, type: "date", onSave: function(v) { saveCompany(Object.assign({}, sel, { listCreatedDate: v })); } })
-            ),
-            h(EditableField, { label: "フリガナ", value: sel.nameKana, onSave: function(v) { saveCompany(Object.assign({}, sel, { nameKana: v })); } }),
-            h("div", { style: { display: "flex", gap: 6, alignItems: "end", marginBottom: 4 } },
-              h("div", { style: { width: 100 } }, h(EditableSelect, { label: "法人格", value: sel.corpType, options: CORP_TYPES, vertical: true, onSave: function(v) { saveCompany(Object.assign({}, sel, { corpType: v })); } })),
-              h("div", { style: { flex: 1 } }, h(EditableField, { label: "会社名", value: sel.name, onSave: function(v) { saveCompany(Object.assign({}, sel, { name: v })); } }))
-            ),
-            h("div", { style: { maxWidth: 180, marginBottom: 4 } },
-              h(EditableField, { label: "〒", value: sel.zip, onSave: function(v) { saveCompany(Object.assign({}, sel, { zip: toHalfWidth(v) })); } })
-            ),
-            h(EditableField, { label: "住所", value: [sel.prefecture, sel.city, sel.address].filter(Boolean).join(" "), onSave: function(v) {
-              var m = v.match(/^(..?.?[都道府県])?\s*(.+?[市区町村郡])?\s*(.*)/);
-              if (m) { saveCompany(Object.assign({}, sel, { prefecture: (m[1]||"").trim(), city: (m[2]||"").trim(), address: (m[3]||"").trim() })); }
-              else { saveCompany(Object.assign({}, sel, { address: v })); }
-            }}),
-            // 電話番号
-            h("div", { style: { marginTop: 4 } },
-              h("div", { className: "flex-between", style: { marginBottom: 2 } },
-                h("div", { className: "info-label" }, "電話番号"),
-                h("button", { className: "btn btn-ghost btn-sm", style: { padding: "0px 5px", fontSize: 10 }, onClick: function() { setShowPhoneForm(!showPhoneForm); } }, "+")
               ),
-              (sel.phones || []).length === 0 && !showPhoneForm && h("div", { className: "text-muted text-xs" }, "未登録"),
-              (sel.phones || []).map(function(p, idx) {
-                return h(EditablePhone, { key: p.id, phone: p, canDelete: idx > 0, onSave: function(updated) {
-                  API.updatePhone(p.id, updated).then(function() { onReload(); });
-                }, onDelete: function() { deletePhone(p.id); } });
-              }),
-              showPhoneForm && h("div", { style: { background: "#252836", borderRadius: 4, padding: 6, marginTop: 3 } },
-                h("div", { className: "flex gap-4" },
-                  h("input", { className: "form-input", style: { padding: "2px 4px", fontSize: 11, width: 90 }, value: phoneData.number, placeholder: "番号",
-                    onChange: function(e) { setPhoneData(Object.assign({}, phoneData, { number: toHalfWidth(e.target.value) })); } }),
-                  h("select", { className: "form-input", style: { padding: "2px 2px", fontSize: 10, width: 44 }, value: phoneData.type,
-                    onChange: function(e) { setPhoneData(Object.assign({}, phoneData, { type: e.target.value })); } },
-                    PHONE_TYPES.map(function(t) { return h("option", { key: t, value: t }, t); })
-                  ),
-                  h("button", { className: "btn btn-primary btn-sm", style: { padding: "1px 6px", fontSize: 10 }, onClick: addPhone }, "+")
-                )
+              h("div", { style: { flex: 1 } }, h(EditableField, { label: "リスト作成日", value: sel.listCreatedDate, type: "date", onSave: function(v) { saveCompany(Object.assign({}, sel, { listCreatedDate: v })); } }))
+            ),
+            // 法人格+フリガナ / 会社名 の2行ボックス
+            h("div", { className: "field-box", style: { marginBottom: 4, padding: "4px 8px" } },
+              h("div", { style: { display: "flex", gap: 8 } },
+                h("div", { style: { width: 100 } }, h(EditableSelect, { label: "法人格", value: sel.corpType, options: CORP_TYPES, onSave: function(v) { saveCompany(Object.assign({}, sel, { corpType: v })); } })),
+                h("div", { style: { flex: 1 } }, h(EditableField, { label: "フリガナ", value: sel.nameKana, onSave: function(v) { saveCompany(Object.assign({}, sel, { nameKana: v })); } }))
+              ),
+              h("div", { style: { marginTop: 2 } },
+                h(EditableField, { label: "", value: sel.name, onSave: function(v) { saveCompany(Object.assign({}, sel, { name: v })); } })
               )
             ),
-            // URL
-            h("div", { style: { marginTop: 4 } },
-              h("div", { className: "flex-between", style: { marginBottom: 2 } },
-                h("div", { className: "info-label" }, "URL"),
-                h("button", { className: "btn btn-ghost btn-sm", style: { padding: "0px 5px", fontSize: 10 }, onClick: function() { setShowUrlForm(!showUrlForm); } }, "+")
+            h("div", { style: { display: "flex", gap: 8, marginBottom: 4 } },
+              h("div", { style: { width: 120 } }, h(EditableField, { label: "〒", value: sel.zip, onSave: function(v) { saveCompany(Object.assign({}, sel, { zip: toHalfWidth(v) })); } })),
+              h("div", { style: { flex: 1 } }, h(EditableField, { label: "住所", value: [sel.prefecture, sel.city, sel.address].filter(Boolean).join(" "), onSave: function(v) {
+                var m = v.match(/^(..?.?[都道府県])?\s*(.+?[市区町村郡])?\s*(.*)/);
+                if (m) { saveCompany(Object.assign({}, sel, { prefecture: (m[1]||"").trim(), city: (m[2]||"").trim(), address: (m[3]||"").trim() })); }
+                else { saveCompany(Object.assign({}, sel, { address: v })); }
+              }}))
+            ),
+            // 電話番号（横1列）
+            h("div", { style: { display: "flex", gap: 4, alignItems: "start", marginBottom: 4 } },
+              h("div", { className: "info-label", style: { paddingTop: 4, whiteSpace: "nowrap" } }, "TEL"),
+              h("div", { style: { flex: 1 } },
+                (sel.phones || []).map(function(p, idx) {
+                  return h(EditablePhone, { key: p.id, phone: p, canDelete: idx > 0, onSave: function(updated) {
+                    API.updatePhone(p.id, updated).then(function() { onReload(); });
+                  }, onDelete: function() { deletePhone(p.id); } });
+                }),
+                (sel.phones || []).length === 0 && h("div", { className: "text-muted text-xs" }, "未登録")
               ),
-              (sel.urls || []).length === 0 && !showUrlForm && h("div", { className: "text-muted text-xs" }, "未登録"),
-              (sel.urls || []).map(function(u, idx) {
-                return h(EditableUrl, { key: u.id, urlData: u, canDelete: idx > 0, onSave: function(updated) {
-                  API.updateUrl(u.id, updated).then(function() { onReload(); });
-                }, onDelete: function() { deleteUrl(u.id); } });
-              }),
-              showUrlForm && h("div", { style: { background: "#252836", borderRadius: 4, padding: 6, marginTop: 3 } },
-                h("div", { className: "flex gap-4" },
-                  h("input", { className: "form-input", style: { padding: "2px 4px", fontSize: 11, flex: 1 }, value: urlData.url, placeholder: "https://...",
-                    onChange: function(e) { setUrlData(Object.assign({}, urlData, { url: e.target.value })); } }),
-                  h("select", { className: "form-input", style: { padding: "2px 2px", fontSize: 10, width: 80 }, value: urlData.type,
-                    onChange: function(e) { setUrlData(Object.assign({}, urlData, { type: e.target.value })); } },
-                    h("option", { value: "" }, "種別"),
-                    URL_TYPES.map(function(t) { return h("option", { key: t, value: t }, t); })
-                  ),
-                  h("button", { className: "btn btn-primary btn-sm", style: { padding: "1px 6px", fontSize: 10 }, onClick: addUrl }, "+")
-                )
+              h("button", { className: "btn btn-ghost btn-sm", style: { padding: "0px 5px", fontSize: 10 }, onClick: function() { setShowPhoneForm(!showPhoneForm); } }, "+")
+            ),
+            showPhoneForm && h("div", { style: { background: "#252836", borderRadius: 4, padding: 6, marginBottom: 4 } },
+              h("div", { className: "flex gap-4" },
+                h("input", { className: "form-input", style: { padding: "2px 4px", fontSize: 11, width: 90 }, value: phoneData.number, placeholder: "番号",
+                  onChange: function(e) { setPhoneData(Object.assign({}, phoneData, { number: toHalfWidth(e.target.value) })); } }),
+                h("select", { className: "form-input", style: { padding: "2px 2px", fontSize: 10, width: 44 }, value: phoneData.type,
+                  onChange: function(e) { setPhoneData(Object.assign({}, phoneData, { type: e.target.value })); } },
+                  PHONE_TYPES.map(function(t) { return h("option", { key: t, value: t }, t); })
+                ),
+                h("button", { className: "btn btn-primary btn-sm", style: { padding: "1px 6px", fontSize: 10 }, onClick: addPhone }, "+")
+              )
+            ),
+            // URL（横1列）
+            h("div", { style: { display: "flex", gap: 4, alignItems: "start" } },
+              h("div", { className: "info-label", style: { paddingTop: 4, whiteSpace: "nowrap" } }, "URL"),
+              h("div", { style: { flex: 1 } },
+                (sel.urls || []).map(function(u, idx) {
+                  return h(EditableUrl, { key: u.id, urlData: u, canDelete: idx > 0, onSave: function(updated) {
+                    API.updateUrl(u.id, updated).then(function() { onReload(); });
+                  }, onDelete: function() { deleteUrl(u.id); } });
+                }),
+                (sel.urls || []).length === 0 && h("div", { className: "text-muted text-xs" }, "未登録")
+              ),
+              h("button", { className: "btn btn-ghost btn-sm", style: { padding: "0px 5px", fontSize: 10 }, onClick: function() { setShowUrlForm(!showUrlForm); } }, "+")
+            ),
+            showUrlForm && h("div", { style: { background: "#252836", borderRadius: 4, padding: 6, marginTop: 3 } },
+              h("div", { className: "flex gap-4" },
+                h("input", { className: "form-input", style: { padding: "2px 4px", fontSize: 11, flex: 1 }, value: urlData.url, placeholder: "https://...",
+                  onChange: function(e) { setUrlData(Object.assign({}, urlData, { url: e.target.value })); } }),
+                h("select", { className: "form-input", style: { padding: "2px 2px", fontSize: 10, width: 80 }, value: urlData.type,
+                  onChange: function(e) { setUrlData(Object.assign({}, urlData, { type: e.target.value })); } },
+                  h("option", { value: "" }, "種別"),
+                  URL_TYPES.map(function(t) { return h("option", { key: t, value: t }, t); })
+                ),
+                h("button", { className: "btn btn-primary btn-sm", style: { padding: "1px 6px", fontSize: 10 }, onClick: addUrl }, "+")
               )
             )
           ),
@@ -436,21 +440,20 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
           ? h("div", { className: "text-muted text-sm" }, (actTab === "コール" ? "通話" : "訪問") + "履歴なし")
           : tabActs.map(function(a) {
               if (a.type === "コール") {
-                // 通話: 3行レイアウト
+                // 通話: 2行レイアウト
                 return h("div", { key: a.id, className: "activity-item" },
                   h("div", { className: "act-row" },
-                    h("div", { style: { flex: 1 } }, h(EditableField, { label: "日付", value: a.date, type: "date", onSave: function(v) { saveAct(a, "date", v); } })),
-                    h("div", { style: { flex: 1 } }, h(EditableSelect, { label: "分類", value: a.callType, options: CALL_TYPES, onSave: function(v) { saveAct(a, "callType", v); } })),
-                    h("div", { style: { flex: 1 } }, h(EditableSelect, { label: "結果", value: a.callResult, options: a.callType === "アポ" ? APPO_RESULTS : CALL_RESULTS, onSave: function(v) { saveAct(a, "callResult", v); } }))
-                  ),
-                  h("div", { className: "act-row" },
+                    h("div", { style: { flex: "0 0 100px" } }, h(EditableField, { label: "日付", value: a.date, type: "date", onSave: function(v) { saveAct(a, "date", v); } })),
+                    h("div", { style: { flex: "0 0 90px" } }, h(EditableSelect, { label: "分類", value: a.callType, options: CALL_TYPES, onSave: function(v) { saveAct(a, "callType", v); } })),
+                    h("div", { style: { flex: "0 0 100px" } }, h(EditableSelect, { label: "結果", value: a.callResult, options: a.callType === "アポ" ? APPO_RESULTS : CALL_RESULTS, onSave: function(v) { saveAct(a, "callResult", v); } })),
                     h("div", { style: { flex: 1 } }, h(EditableField, { label: "内容", value: a.content, onSave: function(v) { saveAct(a, "content", v); } }))
                   ),
                   h("div", { className: "act-row" },
-                    h("div", { style: { flex: 1 } }, agents.length > 0
+                    h("div", { style: { flex: "0 0 100px" } }, agents.length > 0
                       ? h(EditableSelect, { label: "担当", value: a.agent, options: agentOpts, onSave: function(v) { saveAct(a, "agent", v); } })
                       : h(EditableField, { label: "担当", value: a.agent, onSave: function(v) { saveAct(a, "agent", v); } })
                     ),
+                    h("div", { style: { flex: 1 } }),
                     h("button", { className: "btn btn-ghost btn-sm", style: { color: "#ef4444", padding: "0 4px", fontSize: 10 }, onClick: function() { deleteActivity(a.id); } }, "削除")
                   )
                 );
