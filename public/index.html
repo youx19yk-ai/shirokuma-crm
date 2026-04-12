@@ -78,9 +78,6 @@ function App() {
     API.saveFilter(name, filters).then(function() { reload(); });
   };
 
-  var deleteFilter = function(id) {
-    API.deleteFilter(id).then(function() { reload(); });
-  };
 
   // ローディング
   if (loading) {
@@ -110,8 +107,7 @@ function App() {
       onReload: reload, agents: agents, plans: plans,
       creditCompanies: creditCompanies,
       savedFilters: savedFilters,
-      onSaveFilter: saveFilter,
-      onDeleteFilter: deleteFilter
+      onSaveFilter: saveFilter
     });
   } else if (page === "deals") {
     content = h(DealsPage, {

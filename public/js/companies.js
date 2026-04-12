@@ -1,7 +1,7 @@
 // ============================================================
 // 企業管理画面
 // ============================================================
-function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plans, creditCompanies, savedFilters, onSaveFilter, onDeleteFilter }) {
+function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plans, creditCompanies, savedFilters, onSaveFilter }) {
   var _v = useState("detail"), view = _v[0], setView = _v[1];
   var _em = useState(false), editMode = _em[0], setEditMode = _em[1];
   var _ed = useState(null), editData = _ed[0], setEditData = _ed[1];
@@ -18,10 +18,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
   var _act = useState({ date: todayStr(), time: nowTimeStr(), agent: "", callType: "", callResult: "", location: "", visitResult: "未実施", visitRole: "", appoType: "", content: "", nextCallDate: "", nextCallTime: "", nextCallMemo: "" }), actData = _act[0], setActData = _act[1];
   var _showPhone = useState(false), showPhoneForm = _showPhone[0], setShowPhoneForm = _showPhone[1];
   var _phone = useState({ number: "", type: "固定", label: "" }), phoneData = _phone[0], setPhoneData = _phone[1];
-  var _showDeal = useState(false), showDealForm = _showDeal[0], setShowDealForm = _showDeal[1];
   var _editAct = useState(null), editActData = _editAct[0], setEditActData = _editAct[1];
-  var _filterName = useState(""), filterName = _filterName[0], setFilterName = _filterName[1];
-  var _showSaveFilter = useState(false), showSaveFilter = _showSaveFilter[0], setShowSaveFilter = _showSaveFilter[1];
 
   var sel = companies.find(function(c) { return c.id === selectedId; });
 
@@ -100,7 +97,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
           location: "",
           visitResult: "未実施",
           appoType: actData.callResult,
-          content: actData.callResult + "（自動作成）"
+          content: ""
         });
       }
       setShowActForm(false);
@@ -341,7 +338,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
         return tabActs.length === 0
           ? h("div", { className: "text-muted text-sm" }, (actTab === "コール" ? "通話" : "訪問") + "履歴なし")
           : tabActs.map(function(a) {
-              return h("div", { key: a.id, className: "activity-item" },
+              return h("div", { key: a.id, className: "activity-item", style: { cursor: "pointer" }, onClick: function() { setEditActData(Object.assign({}, a)); } },
                 h("div", { className: "activity-date" }, fmtDate(a.date), a.time && h("span", { className: "text-xs text-muted" }, " " + a.time)),
                 h("div", { className: "activity-content" },
                   a.type === "コール" && a.callType && h("span", { className: "text-muted text-xs" }, a.callType + " → "),
@@ -353,8 +350,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
                   a.content
                 ),
                 h("div", { className: "activity-agent" }, a.agent),
-                h("button", { className: "btn-icon", style: { fontSize: 12 }, onClick: function() { setEditActData(Object.assign({}, a)); } }, "✎"),
-                h("button", { className: "btn-icon", style: { fontSize: 12 }, onClick: function() { deleteActivity(a.id); } }, "×")
+                h("button", { className: "btn-icon", style: { fontSize: 12 }, onClick: function(e) { e.stopPropagation(); deleteActivity(a.id); } }, "×")
               );
             });
       })()
@@ -498,80 +494,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
   );
 }
 
-// ---- 案件作成モーダル ----
-function DealFormModal({ companyId, plans, agents, creditCompanies, onClose, onSave }) {
-  var _d = useState({
-    companyId: companyId, planId: "", title: "", status: "商談中", agent: "",
-    contractDate: "", contractAmount: 0, paymentMethod: "", creditCompany: "",
-    creditStatus: "", creditDate: "", creditAmount: 0,
-    interviewDate: "", deliveryDate: "", cost: 0, memo: ""
-  }), data = _d[0], setData = _d[1];
-  var _sav = useState(false), saving = _sav[0], setSaving = _sav[1];
 
-  var s = function(k) { return function(v) { setData(function(p) { var r = Object.assign({}, p); r[k] = v; return r; }); }; };
-
-  var selectPlan = function(planId) {
-    var plan = plans.find(function(p) { return p.id === planId; });
-    if (plan) {
-      setData(function(p) { return Object.assign({}, p, { planId: planId, title: plan.name, contractAmount: plan.price }); });
-    } else {
-      s("planId")(planId);
-    }
-  };
-
-  var doSave = function() {
-    setSaving(true);
-    API.createDeal(data).then(function() { setSaving(false); onSave(); }).catch(function(e) { alert("保存失敗: " + e.message); setSaving(false); });
-  };
-
-  return h("div", { className: "modal-overlay", onClick: onClose },
-    h("div", { className: "modal", onClick: function(e) { e.stopPropagation(); } },
-      h("div", { className: "modal-header" },
-        h("div", { className: "modal-title" }, "新規案件"),
-        h("button", { className: "modal-close", onClick: onClose }, "×")
-      ),
-      h("div", { className: "form-row form-row-2" },
-        plans.length > 0
-          ? h(FormSelect, { label: "商品プラン", options: plans.filter(function(p) { return p.active; }).map(function(p) { return { value: p.id, label: p.name + " (" + fmtMoney(p.price) + ")" }; }), value: data.planId, onChange: selectPlan })
-          : h(FormInput, { label: "案件名", value: data.title, onChange: s("title") }),
-        plans.length > 0 && h(FormInput, { label: "案件名（上書き可）", value: data.title, onChange: s("title") })
-      ),
-      h("div", { className: "form-row form-row-3" },
-        h(FormSelect, { label: "ステータス", options: DEAL_STATUSES, value: data.status, onChange: s("status") }),
-        agents.length > 0
-          ? h(FormSelect, { label: "担当営業", options: agents.map(function(a) { return a.name; }), value: data.agent, onChange: s("agent") })
-          : h(FormInput, { label: "担当営業", value: data.agent, onChange: s("agent") }),
-        h(FormInput, { label: "契約日", type: "date", value: data.contractDate, onChange: s("contractDate") })
-      ),
-      h("div", { className: "form-row form-row-3" },
-        h(FormInput, { label: "契約金額", type: "number", value: data.contractAmount, onChange: function(v) { s("contractAmount")(parseInt(v) || 0); } }),
-        h(FormSelect, { label: "決済方法", options: PAYMENT_METHODS, value: data.paymentMethod, onChange: s("paymentMethod") }),
-        h(FormInput, { label: "原価", type: "number", value: data.cost, onChange: function(v) { s("cost")(parseInt(v) || 0); } })
-      ),
-      data.paymentMethod === "信販" && h("div", null,
-        h("div", { className: "text-sm mb-8", style: { fontWeight: 600, color: "#a855f7" } }, "信販情報"),
-        h("div", { className: "form-row form-row-3" },
-          creditCompanies.length > 0
-            ? h(FormSelect, { label: "信販会社", options: creditCompanies.map(function(c) { return c.name; }), value: data.creditCompany, onChange: s("creditCompany") })
-            : h(FormInput, { label: "信販会社", value: data.creditCompany, onChange: s("creditCompany") }),
-          h(FormSelect, { label: "審査ステータス", options: CREDIT_STATUSES, value: data.creditStatus, onChange: s("creditStatus") }),
-          h(FormInput, { label: "審査日", type: "date", value: data.creditDate, onChange: s("creditDate") })
-        ),
-        h(FormInput, { label: "信販実行額", type: "number", value: data.creditAmount, onChange: function(v) { s("creditAmount")(parseInt(v) || 0); } })
-      ),
-      h("div", { className: "text-sm mb-8 mt-12", style: { fontWeight: 600, color: "#06b6d4" } }, "取材・納品"),
-      h("div", { className: "form-row form-row-2" },
-        h(FormInput, { label: "取材日", type: "date", value: data.interviewDate, onChange: s("interviewDate") }),
-        h(FormInput, { label: "納品日", type: "date", value: data.deliveryDate, onChange: s("deliveryDate") })
-      ),
-      h(FormInput, { label: "メモ", value: data.memo, onChange: s("memo"), multi: true }),
-      h("div", { className: "flex gap-12 mt-16", style: { justifyContent: "flex-end" } },
-        h("button", { className: "btn btn-secondary", onClick: onClose }, "キャンセル"),
-        h("button", { className: "btn btn-primary", onClick: doSave, disabled: saving }, saving ? "保存中..." : "登録する")
-      )
-    )
-  );
-}
 
 // ---- CSVモーダル ----
 function CsvModal({ onClose, onImport }) {
