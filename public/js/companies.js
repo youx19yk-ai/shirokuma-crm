@@ -4,7 +4,6 @@
 function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plans, creditCompanies, savedFilters, onSaveFilter }) {
   var _v = useState("detail"), view = _v[0], setView = _v[1];
   var _ed = useState(null), editData = _ed[0], setEditData = _ed[1];
-  var _undo = useState([]), undoStack = _undo[0], setUndoStack = _undo[1];
   var _sm = useState(false), searchMode = _sm[0], setSearchMode = _sm[1];
   var _sq = useState({}), searchQuery = _sq[0], setSearchQuery = _sq[1];
   var _actTab = useState("コール"), actTab = _actTab[0], setActTab = _actTab[1];
@@ -62,18 +61,12 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
   // 保存
   // インライン保存（デバウンス付き）
   var saveTimer = useRef(null);
-  var lastSavedRef = useRef(null);
   var saveCompany = function(data) {
-    // undo用に現在の状態を保存（初回のみ）
-    if (!lastSavedRef.current || lastSavedRef.current !== data.id) {
-      if (sel) setUndoStack(function(prev) { return [{ type: "company", id: sel.id, data: Object.assign({}, sel) }].concat(prev).slice(0, 20); });
-      lastSavedRef.current = data.id;
-    }
     setSaving(true);
     if (saveTimer.current) clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(function() {
       API.updateCompany(data.id, data).then(function() {
-        setSaving(false); lastSavedRef.current = null; onReload();
+        setSaving(false); onReload();
       }).catch(function(e) { alert("保存失敗: " + e.message); setSaving(false); });
     }, 800);
   };
@@ -86,17 +79,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
     }).catch(function(e) { alert("登録失敗: " + e.message); setSaving(false); });
   };
 
-  // ひとつ戻す
-  var undo = function() {
-    if (undoStack.length === 0) return;
-    var last = undoStack[0];
-    setUndoStack(function(prev) { return prev.slice(1); });
-    if (last.type === "company") {
-      API.updateCompany(last.id, last.data).then(function() { onReload(); });
-    } else if (last.type === "activity-delete") {
-      API.addActivity(last.companyId, last.data).then(function() { onReload(); });
-    }
-  };
+
 
   // 削除
   var doDelete = function() {
@@ -131,10 +114,8 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
     }).catch(function(e) { alert("保存失敗: " + e.message); });
   };
 
-  // 行動削除（undo対応）
+  // 行動削除
   var deleteActivity = function(actId) {
-    var act = sel && (sel.activities || []).find(function(a) { return a.id === actId; });
-    if (act) setUndoStack(function(prev) { return [{ type: "activity-delete", companyId: sel.id, data: act }].concat(prev).slice(0, 20); });
     API.deleteActivity(actId).then(function() { onReload(); });
   };
 
@@ -219,11 +200,9 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
       // ツールバー
       h("div", { className: "flex-between mb-8" },
         h("div", { className: "flex gap-8" },
-          h("span", { className: "badge " + statusBadgeClass(sel.status) }, sel.status),
           saving && h("span", { className: "text-xs text-muted" }, "保存中...")
         ),
         h("div", { className: "flex gap-8" },
-          undoStack.length > 0 && h("button", { className: "btn btn-ghost btn-sm", onClick: undo }, "戻す"),
           h("button", { className: "btn btn-ghost btn-sm", style: { color: "#ef4444" }, onClick: function() { setShowConfirm(true); } }, "削除")
         )
       ),
