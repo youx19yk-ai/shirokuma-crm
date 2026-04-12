@@ -157,7 +157,7 @@ function MemoEditor({ value, onSave }) {
 }
 
 // ---- クリック編集フィールド ----
-function EditableField({ label, value, onSave, type, link, highlight }) {
+function EditableField({ label, value, onSave, type, link, highlight, multi }) {
   var _e = useState(false), editing = _e[0], setEditing = _e[1];
   var _d = useState(value || ""), draft = _d[0], setDraft = _d[1];
   var inputRef = useRef(null);
@@ -165,21 +165,28 @@ function EditableField({ label, value, onSave, type, link, highlight }) {
   useEffect(function() { if (editing && inputRef.current) inputRef.current.focus(); }, [editing]);
 
   if (editing) {
-    return h("div", { className: "field-box field-inline" },
-      h("span", { className: "info-label-inline" }, label),
-      h("input", { ref: inputRef, className: "form-input", type: type || "text", value: draft,
-        style: { padding: "2px 6px", fontSize: 13, flex: 1 },
-        onChange: function(e) { setDraft(toHalfWidth(e.target.value)); },
-        onBlur: function() { if (draft !== (value || "")) onSave(draft); setEditing(false); },
-        onKeyDown: function(e) { if (e.key === "Enter") { e.target.blur(); } if (e.key === "Escape") { setDraft(value || ""); setEditing(false); } }
-      })
+    return h("div", { className: multi ? "field-box" : "field-box field-inline" },
+      label && h(multi ? "div" : "span", { className: multi ? "info-label" : "info-label-inline" }, label),
+      multi
+        ? h("textarea", { ref: inputRef, className: "form-input", value: draft, rows: 3,
+            style: { padding: "4px 6px", fontSize: 13, width: "100%" },
+            onChange: function(e) { setDraft(e.target.value); },
+            onBlur: function() { if (draft !== (value || "")) onSave(draft); setEditing(false); },
+            onKeyDown: function(e) { if (e.key === "Escape") { setDraft(value || ""); setEditing(false); } }
+          })
+        : h("input", { ref: inputRef, className: "form-input", type: type || "text", value: draft,
+            style: { padding: "2px 6px", fontSize: 13, flex: 1 },
+            onChange: function(e) { setDraft(toHalfWidth(e.target.value)); },
+            onBlur: function() { if (draft !== (value || "")) onSave(draft); setEditing(false); },
+            onKeyDown: function(e) { if (e.key === "Enter") { e.target.blur(); } if (e.key === "Escape") { setDraft(value || ""); setEditing(false); } }
+          })
     );
   }
-  return h("div", { className: "field-box field-inline", style: { cursor: "pointer" }, onClick: function() { setEditing(true); } },
-    h("span", { className: "info-label-inline" }, label),
+  return h("div", { className: multi ? "field-box" : "field-box field-inline", style: { cursor: "pointer", minHeight: multi ? 50 : undefined }, onClick: function() { setEditing(true); } },
+    label && h(multi ? "div" : "span", { className: multi ? "info-label" : "info-label-inline" }, label),
     (link && value)
       ? h("a", { href: value.startsWith("http") ? value : "https://" + value, target: "_blank", rel: "noreferrer", className: "info-value", onClick: function(e) { e.stopPropagation(); } }, value)
-      : h("span", { className: "info-value" + (highlight ? " text-highlight" : "") }, value || "―")
+      : h(multi ? "div" : "span", { className: "info-value" + (highlight ? " text-highlight" : ""), style: multi ? { whiteSpace: "pre-wrap", fontSize: 12 } : undefined }, value || "―")
   );
 }
 
