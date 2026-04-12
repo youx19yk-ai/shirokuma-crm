@@ -335,9 +335,9 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
           h(EditableField, { label: "リスト作成日", value: sel.listCreatedDate, type: "date", onSave: function(v) { saveCompany(Object.assign({}, sel, { listCreatedDate: v })); } }),
           h(InfoRow, { label: "コール数", value: sel.callCount || 0 }),
           h(InfoRow, { label: "接触数", value: contactCount }),
-          h("div", { className: "field-box" },
-            h("div", { className: "info-label" }, "接触内訳"),
-            h("div", { className: "info-value text-xs" }, "担当" + tantoCount + " 受付" + uketsuke + " 決済" + kessai)
+          h("div", { className: "field-box field-inline" },
+            h("span", { className: "info-label-inline" }, "接触内訳"),
+            h("span", { className: "info-value text-xs" }, "担当" + tantoCount + " 受付" + uketsuke + " 決済" + kessai)
           )
         );
       })(),

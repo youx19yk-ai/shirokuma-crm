@@ -104,11 +104,11 @@ function FormSelect({ label, options, value, onChange, placeholder }) {
 }
 
 function InfoRow({ label, value, link, highlight }) {
-  return h("div", { className: "field-box" },
-    h("div", { className: "info-label" }, label),
+  return h("div", { className: "field-box field-inline" },
+    h("span", { className: "info-label-inline" }, label),
     (link && value)
       ? h("a", { href: value.startsWith("http") ? value : "https://" + value, target: "_blank", rel: "noreferrer", className: "info-value" }, value)
-      : h("div", { className: "info-value" + (highlight ? " text-highlight" : "") }, value || "―")
+      : h("span", { className: "info-value" + (highlight ? " text-highlight" : "") }, value || "―")
   );
 }
 
@@ -166,21 +166,21 @@ function EditableField({ label, value, onSave, type, link, highlight }) {
   useEffect(function() { if (editing && inputRef.current) inputRef.current.focus(); }, [editing]);
 
   if (editing) {
-    return h("div", { className: "field-box" },
-      h("div", { className: "info-label" }, label),
+    return h("div", { className: "field-box field-inline" },
+      h("span", { className: "info-label-inline" }, label),
       h("input", { ref: inputRef, className: "form-input", type: type || "text", value: draft,
-        style: { padding: "4px 8px", fontSize: 13 },
+        style: { padding: "2px 6px", fontSize: 13, flex: 1 },
         onChange: function(e) { setDraft(toHalfWidth(e.target.value)); },
         onBlur: function() { if (draft !== (value || "")) onSave(draft); setEditing(false); },
         onKeyDown: function(e) { if (e.key === "Enter") { e.target.blur(); } if (e.key === "Escape") { setDraft(value || ""); setEditing(false); } }
       })
     );
   }
-  return h("div", { className: "field-box", style: { cursor: "pointer" }, onClick: function() { setEditing(true); } },
-    h("div", { className: "info-label" }, label),
+  return h("div", { className: "field-box field-inline", style: { cursor: "pointer" }, onClick: function() { setEditing(true); } },
+    h("span", { className: "info-label-inline" }, label),
     (link && value)
       ? h("a", { href: value.startsWith("http") ? value : "https://" + value, target: "_blank", rel: "noreferrer", className: "info-value", onClick: function(e) { e.stopPropagation(); } }, value)
-      : h("div", { className: "info-value" + (highlight ? " text-highlight" : "") }, value || "―")
+      : h("span", { className: "info-value" + (highlight ? " text-highlight" : "") }, value || "―")
   );
 }
 
@@ -188,9 +188,9 @@ function EditableSelect({ label, value, options, onSave }) {
   var _e = useState(false), editing = _e[0], setEditing = _e[1];
 
   if (editing) {
-    return h("div", { className: "field-box" },
-      h("div", { className: "info-label" }, label),
-      h("select", { className: "form-input", value: value || "", style: { padding: "4px 8px", fontSize: 13 },
+    return h("div", { className: "field-box field-inline" },
+      h("span", { className: "info-label-inline" }, label),
+      h("select", { className: "form-input", value: value || "", style: { padding: "2px 6px", fontSize: 13, flex: 1 },
         onChange: function(e) { onSave(e.target.value); setEditing(false); },
         onBlur: function() { setEditing(false); }
       },
@@ -199,9 +199,9 @@ function EditableSelect({ label, value, options, onSave }) {
       )
     );
   }
-  return h("div", { className: "field-box", style: { cursor: "pointer" }, onClick: function() { setEditing(true); } },
-    h("div", { className: "info-label" }, label),
-    h("div", { className: "info-value" }, value || "―")
+  return h("div", { className: "field-box field-inline", style: { cursor: "pointer" }, onClick: function() { setEditing(true); } },
+    h("span", { className: "info-label-inline" }, label),
+    h("span", { className: "info-value" }, value || "―")
   );
 }
 
@@ -231,7 +231,7 @@ function EditablePhone({ phone, onSave, onDelete }) {
     h("span", { className: "phone-number" }, phone.number),
     h("span", { className: "phone-type" }, phone.type),
     h("span", { className: "phone-label" }, phone.label),
-    h("button", { className: "btn-icon btn-sm", onClick: function(e) { e.stopPropagation(); onDelete(); } }, "×")
+    h("button", { className: "btn btn-ghost btn-sm", style: { color: "#ef4444", padding: "0 4px", fontSize: 10 }, onClick: function(e) { e.stopPropagation(); onDelete(); } }, "削除")
   );
 }
 
@@ -262,7 +262,7 @@ function EditableUrl({ urlData, onSave, onDelete }) {
       style: { color: "#fff", background: "#3b82f6", borderRadius: 4, padding: "1px 6px", fontSize: 10, textDecoration: "none", whiteSpace: "nowrap" },
       onClick: function(e) { e.stopPropagation(); }
     }, "アクセス"),
-    h("button", { className: "btn-icon btn-sm", onClick: function(e) { e.stopPropagation(); onDelete(); } }, "×")
+    h("button", { className: "btn btn-ghost btn-sm", style: { color: "#ef4444", padding: "0 4px", fontSize: 10 }, onClick: function(e) { e.stopPropagation(); onDelete(); } }, "削除")
   );
 }
 
