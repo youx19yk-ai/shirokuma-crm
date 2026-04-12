@@ -313,24 +313,26 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
         var tantoCount = calls.filter(function(a) { return a.callType === "担当者通話"; }).length;
         var uketsuke = calls.filter(function(a) { return a.callType === "受付通話"; }).length;
         var kessai = calls.filter(function(a) { return a.callType === "決済通話"; }).length;
-        return h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, marginBottom: 8 } },
-          h(EditableField, { label: "リスト作成日", value: sel.listCreatedDate, type: "date", onSave: function(v) { saveCompany(Object.assign({}, sel, { listCreatedDate: v })); } }),
-          h(InfoRow, { label: "コール数", value: sel.callCount || 0 }),
-          h(InfoRow, { label: "接触数", value: contactCount }),
-          h("div", { className: "field-box field-inline" },
-            h("span", { className: "info-label-inline" }, "接触内訳"),
-            h("span", { className: "info-value text-xs" }, "担当" + tantoCount + " 受付" + uketsuke + " 決済" + kessai)
+        return h("div", null,
+          h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 8 } },
+            h(EditableField, { label: "次回コール", value: sel.nextCallDate, type: "date", onSave: function(v) { saveCompany(Object.assign({}, sel, { nextCallDate: v })); },
+              highlight: sel.nextCallDate && sel.nextCallDate <= todayStr() }),
+            agents.length > 0
+              ? h(EditableSelect, { label: "予定者", value: sel.nextCallAgent, options: agents.map(function(a) { return a.name; }), onSave: function(v) { saveCompany(Object.assign({}, sel, { nextCallAgent: v })); } })
+              : h(EditableField, { label: "予定者", value: sel.nextCallAgent, onSave: function(v) { saveCompany(Object.assign({}, sel, { nextCallAgent: v })); } }),
+            h(EditableField, { label: "次回メモ", value: sel.nextCallMemo, onSave: function(v) { saveCompany(Object.assign({}, sel, { nextCallMemo: v })); } })
+          ),
+          h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, marginBottom: 8 } },
+            h(EditableField, { label: "リスト作成日", value: sel.listCreatedDate, type: "date", onSave: function(v) { saveCompany(Object.assign({}, sel, { listCreatedDate: v })); } }),
+            h(InfoRow, { label: "コール数", value: sel.callCount || 0 }),
+            h(InfoRow, { label: "接触数", value: contactCount }),
+            h("div", { className: "field-box field-inline" },
+              h("span", { className: "info-label-inline" }, "接触内訳"),
+              h("span", { className: "info-value text-xs" }, "担当" + tantoCount + " 受付" + uketsuke + " 決済" + kessai)
+            )
           )
         );
       })(),
-      h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 8 } },
-        h(EditableField, { label: "次回コール", value: sel.nextCallDate, type: "date", onSave: function(v) { saveCompany(Object.assign({}, sel, { nextCallDate: v })); },
-          highlight: sel.nextCallDate && sel.nextCallDate <= todayStr() }),
-        agents.length > 0
-          ? h(EditableSelect, { label: "予定者", value: sel.nextCallAgent, options: agents.map(function(a) { return a.name; }), onSave: function(v) { saveCompany(Object.assign({}, sel, { nextCallAgent: v })); } })
-          : h(EditableField, { label: "予定者", value: sel.nextCallAgent, onSave: function(v) { saveCompany(Object.assign({}, sel, { nextCallAgent: v })); } }),
-        h(EditableField, { label: "次回メモ", value: sel.nextCallMemo, onSave: function(v) { saveCompany(Object.assign({}, sel, { nextCallMemo: v })); } })
-      ),
       // 備考メモ
       h(MemoEditor, { key: "memo-" + sel.id, value: sel.memo, onSave: function(v) { saveCompany(Object.assign({}, sel, { memo: v })); } })
     ),
