@@ -314,8 +314,10 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
         var uketsuke = calls.filter(function(a) { return a.callType === "受付通話"; }).length;
         var kessai = calls.filter(function(a) { return a.callType === "決済通話"; }).length;
         return h("div", null,
-          h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, marginBottom: 8 } },
-            h(EditableField, { label: "リスト作成日", value: sel.listCreatedDate, type: "date", onSave: function(v) { saveCompany(Object.assign({}, sel, { listCreatedDate: v })); } }),
+          h("div", { style: { marginBottom: 8 } },
+            h(EditableField, { label: "リスト作成日", value: sel.listCreatedDate, type: "date", onSave: function(v) { saveCompany(Object.assign({}, sel, { listCreatedDate: v })); } })
+          ),
+          h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 8 } },
             h(InfoRow, { label: "コール数", value: sel.callCount || 0 }),
             h(InfoRow, { label: "接触数", value: contactCount }),
             h("div", { className: "field-box field-inline" },
