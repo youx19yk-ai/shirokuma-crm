@@ -186,11 +186,11 @@ textarea.form-input { resize: vertical; }
 
 /* ---- Phone list ---- */
 .phone-row {
-  display: flex; align-items: center; gap: 8px; padding: 8px 12px; margin-bottom: 6px;
-  border: 1px solid #4a4f6a; border-radius: 6px; font-size: 13px;
+  display: flex; align-items: center; gap: 6px; padding: 4px 10px; margin-bottom: 3px;
+  border: 1px solid #4a4f6a; border-radius: 4px; font-size: 12px;
 }
-.phone-number { color: #e2e8f0; font-weight: 500; min-width: 140px; }
-.phone-type { color: #94a3b8; font-size: 12px; min-width: 80px; }
+.phone-number { color: #e2e8f0; font-weight: 500; min-width: 120px; }
+.phone-type { color: #94a3b8; font-size: 11px; min-width: 50px; }
 .phone-label { color: #64748b; font-size: 12px; flex: 1; }
 
 /* ---- Deal status colors ---- */
