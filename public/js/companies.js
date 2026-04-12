@@ -540,7 +540,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
       h("button", { className: "btn btn-success btn-sm", onClick: function() { setShowCsv(true); } }, "CSV入力"),
       h("button", { className: "btn btn-secondary btn-sm", onClick: function() { API.exportCSV(); } }, "CSV出力"),
       h("button", { className: "btn btn-primary btn-sm", onClick: function() {
-        setEditData({ name: "", nameKana: "", corpType: "", zip: "", prefecture: "", city: "", address: "", url: "", email: "", representative: "", status: "見込み", industry: "", industryDetail: "", listCreatedDate: "", nextCallDate: "", nextCallTime: "", nextCallMemo: "", memo: "" });
+        setEditData({ name: "", nameKana: "", corpType: "", zip: "", prefecture: "", city: "", address: "", url: "", email: "", representative: "", status: "見込み", industry: "", industryDetail: "", listCreatedDate: "", nextCallDate: "", nextCallTime: "", nextCallMemo: "", nextCallAgent: "", prospectOwner: "", memo: "" });
         setView("newCompany");
       } }, "+ 新規企業"),
       h("button", { className: "btn btn-ghost btn-sm", onClick: function() { setView(view === "list" ? "detail" : "list"); } }, view === "list" ? "詳細" : "一覧")

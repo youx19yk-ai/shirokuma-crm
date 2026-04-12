@@ -287,17 +287,25 @@ function CompanyForm({ data, onChange, agents }) {
     ),
     h("div", { className: "form-row form-row-2" },
       h(FormInput, { label: "URL", value: data.url, onChange: s("url") }),
-      h(FormInput, { label: "代表者名", value: data.representative, onChange: s("representative") })
+      h(FormInput, { label: "メール", value: data.email, onChange: s("email") })
+    ),
+    h("div", { className: "form-row form-row-2" },
+      h(FormInput, { label: "代表者名", value: data.representative, onChange: s("representative") }),
+      h(FormSelect, { label: "法人格", options: CORP_TYPES, value: data.corpType, onChange: s("corpType") })
     ),
     h("div", { className: "form-row form-row-3" },
       h(FormSelect, { label: "見込み分類", options: STATUS_OPTIONS, value: data.status, onChange: s("status") }),
       h(FormSelect, { label: "業種", options: INDUSTRY_OPTIONS, value: data.industry, onChange: s("industry") }),
       h(FormInput, { label: "業種詳細", value: data.industryDetail, onChange: s("industryDetail") })
     ),
+    h(FormInput, { label: "見込み者", value: data.prospectOwner, onChange: s("prospectOwner") }),
     h("div", { className: "form-row form-row-2" },
       h(FormInput, { label: "リスト作成年月日", type: "date", value: data.listCreatedDate, onChange: s("listCreatedDate") }),
-      h(FormInput, { label: "次回コール予定日", type: "date", value: data.nextCallDate, onChange: s("nextCallDate") }),
-      h(FormInput, { label: "次回コール時間", type: "time", value: data.nextCallTime, onChange: s("nextCallTime") })
+      h(FormInput, { label: "次回コール予定日", type: "date", value: data.nextCallDate, onChange: s("nextCallDate") })
+    ),
+    h("div", { className: "form-row form-row-2" },
+      h(FormInput, { label: "次回コール時間", type: "time", value: data.nextCallTime, onChange: s("nextCallTime") }),
+      h(FormInput, { label: "予定者", value: data.nextCallAgent, onChange: s("nextCallAgent") })
     ),
     h(FormInput, { label: "次回コールメモ", value: data.nextCallMemo, onChange: s("nextCallMemo"), placeholder: "例: 見積もり確認" }),
     h(FormInput, { label: "備考メモ", value: data.memo, onChange: s("memo"), multi: true })

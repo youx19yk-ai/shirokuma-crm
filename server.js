@@ -333,13 +333,13 @@ app.post('/api/companies/bulk', async (req, res) => {
     for (const c of companies) {
       const id = c.id || genId();
       await pool.query(`
-        INSERT INTO companies (id, name, name_kana, zip, prefecture, city, address, url,
-          representative, status, industry, industry_detail, list_created_date, memo)
-        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+        INSERT INTO companies (id, name, name_kana, corp_type, zip, prefecture, city, address, url, email,
+          representative, status, industry, industry_detail, list_created_date, prospect_owner, memo)
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
         ON CONFLICT (id) DO NOTHING
-      `, [id, c.name||'', c.nameKana||'', c.zip||'', c.prefecture||'', c.city||'',
-          c.address||'', c.url||'', c.representative||'', c.status||'見込み',
-          c.industry||'', c.industryDetail||'', c.listCreatedDate||'', c.memo||'']);
+      `, [id, c.name||'', c.nameKana||'', c.corpType||'', c.zip||'', c.prefecture||'', c.city||'',
+          c.address||'', c.url||'', c.email||'', c.representative||'', c.status||'見込み',
+          c.industry||'', c.industryDetail||'', c.listCreatedDate||'', c.prospectOwner||'', c.memo||'']);
     }
     res.json({ ok: true, count: companies.length });
   } catch (e) {
@@ -815,7 +815,7 @@ app.get('/api/calendar/:year/:month', async (req, res) => {
 app.get('/api/plans', async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM plans ORDER BY sort_order, created_at');
-    res.json(rows);
+    res.json(rows.map(p => ({ id: p.id, name: p.name, category: p.category, price: p.price, description: p.description, active: p.active, sortOrder: p.sort_order })));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

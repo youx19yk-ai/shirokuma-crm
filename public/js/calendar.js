@@ -6,7 +6,6 @@ function CalendarPage({ onNavigate }) {
   var _y = useState(now.getFullYear()), year = _y[0], setYear = _y[1];
   var _m = useState(now.getMonth() + 1), month = _m[0], setMonth = _m[1];
   var _events = useState([]), events = _events[0], setEvents = _events[1];
-  var _view = useState("month"), calView = _view[0], setCalView = _view[1];
 
   useEffect(function() {
     API.getCalendar(year, String(month)).then(function(data) { setEvents(data); }).catch(function() {
@@ -66,10 +65,7 @@ function CalendarPage({ onNavigate }) {
           h("button", { className: "btn btn-ghost btn-sm", onClick: nextMonth }, ">")
         )
       ),
-      h("div", { className: "flex gap-4" },
-        h("button", { className: "btn btn-sm " + (calView === "month" ? "btn-primary" : "btn-ghost"), onClick: function() { setCalView("month"); } }, "月表示"),
-        h("button", { className: "btn btn-sm " + (calView === "week" ? "btn-primary" : "btn-ghost"), onClick: function() { setCalView("week"); } }, "週表示")
-      )
+      h("div", null)
     ),
 
     // カレンダーグリッド
