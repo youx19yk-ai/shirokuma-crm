@@ -27,7 +27,7 @@ const CSV_MAP = {
   "URL":"url","代表者":"representative","代表者名":"representative","ステータス":"status",
   "見込み分類":"status","業種":"industry","業種詳細":"industryDetail",
   "リスト作成日":"listCreatedDate","リスト作成年月日":"listCreatedDate",
-  "最終社長通話日":"lastPresidentCall","備考":"memo","メモ":"memo"
+  "備考":"memo","メモ":"memo"
 };
 
 // ユーティリティ

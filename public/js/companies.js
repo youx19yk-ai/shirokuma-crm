@@ -237,16 +237,13 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
                 : h(EditableField, { label: "リスト作成日", value: sel.listCreatedDate, type: "date", onSave: function(v) { saveCompany(Object.assign({}, sel, { listCreatedDate: v })); } })
               )
             ),
-            // 法人格+フリガナ / 会社名 の2行ボックス
-            h("div", { className: "field-box", style: { marginBottom: 4, padding: "4px 8px" } },
-              h("div", { style: { display: "flex", gap: 8 } },
-                h("div", { style: { width: 100 } }, h(EditableSelect, { label: "法人格", value: sel.corpType, options: CORP_TYPES, onSave: function(v) { saveCompany(Object.assign({}, sel, { corpType: v })); } })),
-                h("div", { style: { flex: 1 } }, h(EditableField, { label: "フリガナ", value: sel.nameKana, onSave: function(v) { saveCompany(Object.assign({}, sel, { nameKana: v })); } }))
-              ),
-              h("div", { style: { display: "flex", gap: 8, marginTop: 2 } },
-                h("div", { style: { width: 100 } }),
-                h("div", { style: { flex: 1 } }, h(EditableField, { label: "", value: sel.name, onSave: function(v) { saveCompany(Object.assign({}, sel, { name: v })); } }))
-              )
+            // 法人格+フリガナ（1行）+ 会社名
+            h("div", { style: { display: "flex", gap: 6, marginBottom: 4 } },
+              h("div", { style: { width: 100 } }, h(EditableSelect, { label: "法人格", value: sel.corpType, options: CORP_TYPES, onSave: function(v) { saveCompany(Object.assign({}, sel, { corpType: v })); } })),
+              h("div", { style: { flex: 1 } }, h(EditableField, { label: "フリガナ", value: sel.nameKana, onSave: function(v) { saveCompany(Object.assign({}, sel, { nameKana: v })); } }))
+            ),
+            h("div", { style: { marginBottom: 4 } },
+              h(EditableField, { label: "会社名", value: sel.name, onSave: function(v) { saveCompany(Object.assign({}, sel, { name: v })); } })
             ),
             h("div", { style: { display: "flex", gap: 8, marginBottom: 4 } },
               h("div", { style: { width: 120 } }, h(EditableField, { label: "〒", value: sel.zip, onSave: function(v) { saveCompany(Object.assign({}, sel, { zip: toHalfWidth(v) })); } })),
