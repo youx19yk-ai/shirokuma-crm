@@ -264,7 +264,7 @@ textarea.form-input { resize: vertical; }
 .confirm-buttons { display: flex; gap: 12px; justify-content: center; }
 
 /* ---- Dashboard ---- */
-.dash-container { }
+.dash-container { width: 100%; }
 
 .dash-filter-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
 .period-btns { display: flex; }
