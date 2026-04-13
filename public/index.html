@@ -6,17 +6,17 @@
 <title>CRM</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<link rel="stylesheet" href="/css/style.css?v=20260414h">
+<link rel="stylesheet" href="/css/style.css?v=20260414j">
 </head>
 <body>
 <div id="root"></div>
-<script src="/js/api.js?v=20260414h"></script>
-<script src="/js/components.js?v=20260414h"></script>
-<script src="/js/dashboard.js?v=20260414h"></script>
-<script src="/js/companies.js?v=20260414h"></script>
-<script src="/js/deals.js?v=20260414h"></script>
+<script src="/js/api.js?v=20260414j"></script>
+<script src="/js/components.js?v=20260414j"></script>
+<script src="/js/dashboard.js?v=20260414j"></script>
+<script src="/js/companies.js?v=20260414j"></script>
+<script src="/js/deals.js?v=20260414j"></script>
 
-<script src="/js/master.js?v=20260414h"></script>
+<script src="/js/master.js?v=20260414j"></script>
 <script>
 // ============================================================
 // App ルーター
@@ -100,7 +100,7 @@ function App() {
   var dashPages = ["schedule","tasks","performance","production"];
   var content;
   if (dashPages.indexOf(page) >= 0) {
-    content = h(DashboardPage, { key: page, tab: page, onNavigate: navigate, agents: agents, plans: plans, creditCompanies: creditCompanies });
+    content = h(DashboardPage, { tab: page, onNavigate: navigate, agents: agents, plans: plans, creditCompanies: creditCompanies });
   } else if (page === "companies") {
     content = h(CompaniesPage, {
       companies: companies, selectedId: selectedId,
