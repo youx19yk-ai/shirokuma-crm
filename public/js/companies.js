@@ -459,16 +459,8 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
                 // 通話: 日付|分類(2行)|結果(2行)|内容(3行)|通話者|削除(縦長)
                 return h("div", { key: a.id, className: "activity-item", style: { display: "grid", gridTemplateColumns: "90px 80px 100px 1fr 60px 28px", gap: 4, alignItems: "stretch" } },
                   h(EditableField, { label: "日付", value: a.date, type: "date", onSave: function(v) { saveAct(a, "date", v); } }),
-                  h("div", { className: "field-box", style: { minHeight: 48 } },
-                    h("div", { className: "info-label" }, "分類"),
-                    h("div", { className: "info-value", style: { fontSize: 12 } }, a.callType || "―"),
-                    h("div", { style: { position: "absolute", inset: 0, cursor: "pointer" }, onClick: function() { var opts = CALL_TYPES; var i = opts.indexOf(a.callType); saveAct(a, "callType", opts[(i+1)%opts.length]); } })
-                  ),
-                  h("div", { className: "field-box", style: { minHeight: 48, position: "relative" } },
-                    h("div", { className: "info-label" }, "結果"),
-                    h("div", { className: "info-value", style: { fontSize: 12 } }, a.callResult || "―"),
-                    h("div", { style: { position: "absolute", inset: 0, cursor: "pointer" }, onClick: function() { var opts = a.callType === "アポ" ? APPO_RESULTS : CALL_RESULTS; var i = opts.indexOf(a.callResult); saveAct(a, "callResult", opts[(i+1)%opts.length]); } })
-                  ),
+                  h(EditableSelect, { label: "分類", value: a.callType, options: CALL_TYPES, onSave: function(v) { saveAct(a, "callType", v); } }),
+                  h(EditableSelect, { label: "結果", value: a.callResult, options: a.callType === "アポ" ? APPO_RESULTS : CALL_RESULTS, onSave: function(v) { saveAct(a, "callResult", v); } }),
                   h(EditableField, { label: "内容", value: a.content, onSave: function(v) { saveAct(a, "content", v); }, multi: true }),
                   agents.length > 0
                     ? h(EditableSelect, { label: "通話者", value: a.agent, options: agentOpts, onSave: function(v) { saveAct(a, "agent", v); } })
@@ -485,11 +477,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
                     h("div", { className: "info-label" }, "訪問分類"),
                     h("div", { className: "info-value", style: { fontSize: 11 } }, a.appoType || "―")
                   ),
-                  h("div", { className: "field-box", style: { minHeight: 48, position: "relative" } },
-                    h("div", { className: "info-label" }, "結果"),
-                    h("div", { className: "info-value", style: { fontSize: 11 } }, a.visitResult || "未実施"),
-                    h("div", { style: { position: "absolute", inset: 0, cursor: "pointer" }, onClick: function() { var opts = VISIT_RESULTS; var i = opts.indexOf(a.visitResult); saveAct(a, "visitResult", opts[(i+1)%opts.length]); } })
-                  ),
+                  h(EditableSelect, { label: "結果", value: a.visitResult, options: VISIT_RESULTS, onSave: function(v) { saveAct(a, "visitResult", v); } }),
                   h(EditableField, { label: "内容", value: a.content, onSave: function(v) { saveAct(a, "content", v); }, multi: true }),
                   agents.length > 0 ? h(EditableSelect, { label: "訪問者", value: a.visitor, options: agentOpts, onSave: function(v) { saveAct(a, "visitor", v); } }) : h(EditableField, { label: "訪問者", value: a.visitor, onSave: function(v) { saveAct(a, "visitor", v); } }),
                   agents.length > 0 ? h(EditableSelect, { label: "アポ", value: a.appointer, options: agentOpts, onSave: function(v) { saveAct(a, "appointer", v); } }) : h(EditableField, { label: "アポ", value: a.appointer, onSave: function(v) { saveAct(a, "appointer", v); } }),

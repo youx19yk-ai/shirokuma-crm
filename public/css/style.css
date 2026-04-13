@@ -192,11 +192,12 @@ textarea.form-input { resize: vertical; }
 .deal-status-商談中 { color: #f97316; }
 .deal-status-契約済 { color: #3b82f6; }
 .deal-status-審査中 { color: #a855f7; }
-.deal-status-制作中 { color: #06b6d4; }
-.deal-status-取材待ち { color: #eab308; }
-.deal-status-取材済 { color: #84cc16; }
-.deal-status-納品済 { color: #22c55e; }
-.deal-status-完了 { color: #22c55e; }
+.deal-status-取材予定 { color: #eab308; }
+.deal-status-取材完了 { color: #84cc16; }
+.deal-status-納品予定 { color: #06b6d4; }
+.deal-status-納品完了 { color: #22c55e; }
+.deal-status-入金予定 { color: #f97316; }
+.deal-status-入金済み { color: #22c55e; }
 
 /* ---- Memo ---- */
 .memo-view {

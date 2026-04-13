@@ -759,6 +759,7 @@ app.get('/api/dashboard/kpi', async (req, res) => {
 
       // 訪問結果が契約のもの
       const contractVisits = myVisits.filter(v => v.visit_result === '契約').length;
+      const completedDeals = myDeals.filter(d => ['納品完了','入金予定','入金済み'].includes(d.status)).length;
 
       // 歩留まり率
       const contractRate = appoCount > 0 ? Math.round((contractVisits / appoCount) * 100) : 0;
@@ -766,11 +767,11 @@ app.get('/api/dashboard/kpi', async (req, res) => {
       const appoRate = callCount > 0 ? Math.round((appoCount / callCount) * 100) : 0;
       const proposalRate = callCount > 0 ? Math.round((proposalCount / callCount) * 100) : 0;
       const decisionRate = callCount > 0 ? Math.round((decisionCount / callCount) * 100) : 0;
-      const completionRate = visitCount > 0 ? Math.round((contractVisits / visitCount) * 100) : 0;
+      const completionRate = contractCount > 0 ? Math.round((completedDeals / contractCount) * 100) : 0;
 
       // 各通話率
       const callTypeRates = {};
-      ['アポ','決済通話','担当者通話','受付通話','不通','提案完了','決裁'].forEach(t => {
+      ['アポ','決済通話','担当者通話','受付通話','不通','提案完了','決裁','コールのみ'].forEach(t => {
         callTypeRates[t] = callCount > 0 ? Math.round((myCalls.filter(a => a.call_type === t).length / callCount) * 100) : 0;
       });
 
@@ -785,6 +786,7 @@ app.get('/api/dashboard/kpi', async (req, res) => {
         totalAmount,
         // KPI量
         contractCount,
+        completedDeals,
         selfAppoCount,
         assignedAppoCount,
         visitCount,
