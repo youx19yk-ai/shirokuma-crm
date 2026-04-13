@@ -942,13 +942,34 @@ app.get('/api/calendar/:year/:month', async (req, res) => {
   const { year, month } = req.params;
   const monthStr = `${year}-${month.padStart(2, '0')}`;
   try {
-    const { rows } = await pool.query(
-      "SELECT id, name, next_call_date, next_call_memo, next_call_time FROM companies WHERE next_call_date LIKE $1",
+    // コール予定（企業の次回コール日）
+    const callsRes = await pool.query(
+      "SELECT id, name, next_call_date, next_call_memo, next_call_agent FROM companies WHERE next_call_date LIKE $1",
       [monthStr + '%']
     );
-    res.json(rows.map(r => ({
-      id: r.id, name: r.name, date: r.next_call_date, memo: r.next_call_memo, time: r.next_call_time
-    })));
+    const calls = callsRes.rows.map(r => ({
+      id: r.id, companyName: r.name, date: r.next_call_date, memo: r.next_call_memo, agent: r.next_call_agent || ''
+    }));
+
+    // 訪問予定（アポ活動）
+    const visitsRes = await pool.query(
+      "SELECT a.id, a.date, a.agent, a.visitor, a.visit_result, a.time, c.name as company_name FROM activities a JOIN companies c ON a.company_id = c.id WHERE a.type='アポ' AND a.date LIKE $1 ORDER BY a.date",
+      [monthStr + '%']
+    );
+    const visits = visitsRes.rows.map(r => ({
+      id: r.id, companyName: r.company_name, date: r.date, agent: r.agent || r.visitor || '', time: r.time, visitResult: r.visit_result
+    }));
+
+    // 案件（契約・取材・納品の日程）
+    const dealsRes = await pool.query(
+      "SELECT d.id, d.title, d.status, d.agent, d.contract_date, d.interview_date, d.delivery_date, c.name as company_name FROM deals d JOIN companies c ON d.company_id = c.id WHERE d.status != '商談中'"
+    );
+    const deals = dealsRes.rows.map(r => ({
+      id: r.id, title: r.title, companyName: r.company_name, status: r.status, agent: r.agent || '',
+      contractDate: r.contract_date, interviewDate: r.interview_date, deliveryDate: r.delivery_date
+    }));
+
+    res.json({ calls, visits, deals });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message });
@@ -1117,21 +1138,28 @@ app.get('/api/health', (req, res) => res.json({ ok: true }));
 // ============================================================
 app.post('/api/seed', async (req, res) => {
   try {
-    // 担当者
+    // === 既存の自動生成データをクリア ===
+    await pool.query("DELETE FROM activities WHERE content='自動生成データ' OR content='訪問実施'");
+    await pool.query("DELETE FROM targets WHERE id IN (SELECT id FROM targets)");
+
+    // === 担当者（5名体制） ===
     const agentData = [
       { name: '小林優人', team: '1課' },
       { name: '中川翔', team: '1課' },
       { name: '佐藤美咲', team: '2課' },
-      { name: '田中健太', team: '2課' }
+      { name: '田中健太', team: '2課' },
+      { name: '渡辺亮', team: '1課' }
     ];
     for (const a of agentData) {
       const exists = await pool.query('SELECT id FROM agents WHERE name=$1', [a.name]);
       if (exists.rows.length === 0) {
         await pool.query('INSERT INTO agents (id, name, team) VALUES ($1, $2, $3)', [genId(), a.name, a.team]);
+      } else {
+        await pool.query('UPDATE agents SET team=$1 WHERE name=$2', [a.team, a.name]);
       }
     }
 
-    // 商品プラン
+    // === 商品プラン ===
     const planData = [
       { name: 'HPプランA', category: 'HP', price: 300000, description: '基本HP制作' },
       { name: 'HPプランB', category: 'HP', price: 500000, description: 'スタンダードHP' },
@@ -1145,7 +1173,7 @@ app.post('/api/seed', async (req, res) => {
       }
     }
 
-    // 信販会社
+    // === 信販会社 ===
     for (const cn of ['オリコ','アプラス','ジャックス']) {
       const exists = await pool.query('SELECT id FROM credit_companies WHERE name=$1', [cn]);
       if (exists.rows.length === 0) {
@@ -1153,85 +1181,96 @@ app.post('/api/seed', async (req, res) => {
       }
     }
 
-    // 企業
+    // === 企業（20社） ===
+    const agentNames = agentData.map(a => a.name);
     const companies = [
-      { name: '株式会社山田建設', nameKana: 'ヤマダケンセツ', prefecture: '大阪府', city: '大阪市北区', address: '梅田1-2-3', zip: '530-0001', representative: '山田太郎', status: '見込み', industry: 'ガテン系', nextCallDate: new Date().toISOString().slice(0,10), nextCallMemo: '見積もり確認', nextCallAgent: '小林優人', prospectOwner: '小林優人' },
-      { name: '有限会社鈴木電気', nameKana: 'スズキデンキ', prefecture: '東京都', city: '渋谷区', address: '渋谷2-3-4', zip: '150-0001', representative: '鈴木一郎', status: '顧客', industry: 'IT/通信', nextCallDate: '2026-04-06', nextCallMemo: '納品確認', nextCallAgent: '小林優人', prospectOwner: '小林優人' },
-      { name: '株式会社ビューティーラボ', nameKana: 'ビューティーラボ', prefecture: '東京都', city: '港区', address: '赤坂1-1-1', zip: '107-0052', representative: '高橋美香', status: '見込み', industry: '美容', nextCallDate: new Date().toISOString().slice(0,10), nextCallMemo: '見積もり回答待ち', nextCallAgent: '小林優人', prospectOwner: '小林優人' },
-      { name: '有限会社ミライテック', nameKana: 'ミライテック', prefecture: '神奈川県', city: '横浜市中区', address: '本町3-3-3', zip: '231-0005', representative: '中村太一', status: '見込み', industry: 'IT/通信', nextCallDate: new Date().toISOString().slice(0,10), nextCallMemo: '資料送付後', nextCallAgent: '中川翔', prospectOwner: '中川翔' },
-      { name: '有限会社海鮮まつり', nameKana: 'カイセンマツリ', prefecture: '北海道', city: '札幌市中央区', address: '大通2-2-2', zip: '060-0042', representative: '伊藤浩', status: '見込み', industry: '飲食業', nextCallDate: new Date().toISOString().slice(0,10), nextCallMemo: '新店舗オープン', nextCallAgent: '中川翔', prospectOwner: '中川翔' },
-      { name: '株式会社富士観光', nameKana: 'フジカンコウ', prefecture: '静岡県', city: '富士市', address: '本町5-5-5', zip: '417-0052', representative: '藤田花子', status: '見込み', industry: '不動産', nextCallDate: new Date().toISOString().slice(0,10), nextCallMemo: 'GW前に提案', nextCallAgent: '小林優人', prospectOwner: '小林優人' },
-      { name: '株式会社松風建材', nameKana: 'マツカゼケンザイ', prefecture: '愛知県', city: '名古屋市中区', address: '栄1-1-1', zip: '460-0008', representative: '松田一', status: '見込み', industry: 'ガテン系', nextCallDate: '2026-04-09', nextCallMemo: 'フォロー', nextCallAgent: '中川翔', prospectOwner: '中川翔' },
-      { name: '合同会社クラフトビール東京', nameKana: 'クラフトビールトウキョウ', prefecture: '東京都', city: '世田谷区', address: '三軒茶屋1-1', zip: '154-0024', representative: '小川大', status: '見込み', industry: '飲食業', nextCallDate: '2026-04-09', nextCallMemo: '提案資料', nextCallAgent: '中川翔', prospectOwner: '中川翔' },
-      { name: '株式会社テクノソリューション', nameKana: 'テクノソリューション', prefecture: '東京都', city: '千代田区', address: '丸の内1-1', zip: '100-0005', representative: '佐々木健', status: '顧客', industry: 'IT/通信', prospectOwner: '小林優人' },
-      { name: '株式会社コスモ不動産', nameKana: 'コスモフドウサン', prefecture: '大阪府', city: '大阪市中央区', address: '本町2-2', zip: '541-0053', representative: '星野勇', status: '顧客', industry: '不動産', prospectOwner: '小林優人' },
-      { name: '株式会社ダイヤモンド工機', nameKana: 'ダイヤモンドコウキ', prefecture: '愛知県', city: '豊田市', address: '挙母町1-1', zip: '471-0025', representative: '金子剛', status: '顧客', industry: '製造業', prospectOwner: '中川翔' },
-      { name: '株式会社メディカルプラス', nameKana: 'メディカルプラス', prefecture: '東京都', city: '新宿区', address: '西新宿3-3', zip: '160-0023', representative: '木村純', status: '顧客', industry: '医療/福祉', prospectOwner: '小林優人' },
-      { name: '株式会社フレッシュフーズ', nameKana: 'フレッシュフーズ', prefecture: '千葉県', city: '千葉市', address: '中央区1-1', zip: '260-0013', representative: '田辺明', status: '顧客', industry: '飲食業', prospectOwner: '中川翔' },
-      { name: '社会福祉法人あおぞら会', nameKana: 'アオゾラカイ', prefecture: '埼玉県', city: 'さいたま市', address: '浦和1-1', zip: '330-0063', representative: '斎藤光', status: '顧客', industry: '医療/福祉', prospectOwner: '小林優人' },
-      { name: '株式会社グリーンテック', nameKana: 'グリーンテック', prefecture: '福岡県', city: '福岡市博多区', address: '博多駅前2-2', zip: '812-0011', representative: '原田翼', status: '見込み', industry: '製造業', prospectOwner: '佐藤美咲' }
+      { name: '株式会社山田建設', kana: 'ヤマダケンセツ', pref: '大阪府', city: '大阪市北区', status: '見込み', industry: 'ガテン系', owner: '小林優人', callAgent: '小林優人', callDate: '2026-04-14', callMemo: '見積もり確認' },
+      { name: '有限会社鈴木電気', kana: 'スズキデンキ', pref: '東京都', city: '渋谷区', status: '顧客', industry: 'IT/通信', owner: '小林優人', callAgent: '小林優人', callDate: '2026-04-15', callMemo: '納品確認' },
+      { name: '株式会社ビューティーラボ', kana: 'ビューティーラボ', pref: '東京都', city: '港区', status: '見込み', industry: '美容', owner: '小林優人', callAgent: '小林優人', callDate: '2026-04-14', callMemo: '見積もり回答待ち' },
+      { name: '有限会社ミライテック', kana: 'ミライテック', pref: '神奈川県', city: '横浜市中区', status: '見込み', industry: 'IT/通信', owner: '中川翔', callAgent: '中川翔', callDate: '2026-04-14', callMemo: '資料送付後' },
+      { name: '有限会社海鮮まつり', kana: 'カイセンマツリ', pref: '北海道', city: '札幌市中央区', status: '見込み', industry: '飲食業', owner: '中川翔', callAgent: '中川翔', callDate: '2026-04-16', callMemo: '新店舗オープン' },
+      { name: '株式会社富士観光', kana: 'フジカンコウ', pref: '静岡県', city: '富士市', status: '見込み', industry: '不動産', owner: '小林優人', callAgent: '渡辺亮', callDate: '2026-04-17', callMemo: 'GW前に提案' },
+      { name: '株式会社松風建材', kana: 'マツカゼケンザイ', pref: '愛知県', city: '名古屋市中区', status: '見込み', industry: 'ガテン系', owner: '中川翔', callAgent: '中川翔', callDate: '2026-04-18', callMemo: 'フォロー' },
+      { name: '合同会社クラフトビール東京', kana: 'クラフトビールトウキョウ', pref: '東京都', city: '世田谷区', status: '見込み', industry: '飲食業', owner: '中川翔', callAgent: '渡辺亮', callDate: '2026-04-15', callMemo: '提案資料' },
+      { name: '株式会社テクノソリューション', kana: 'テクノソリューション', pref: '東京都', city: '千代田区', status: '顧客', industry: 'IT/通信', owner: '小林優人' },
+      { name: '株式会社コスモ不動産', kana: 'コスモフドウサン', pref: '大阪府', city: '大阪市中央区', status: '顧客', industry: '不動産', owner: '小林優人' },
+      { name: '株式会社ダイヤモンド工機', kana: 'ダイヤモンドコウキ', pref: '愛知県', city: '豊田市', status: '顧客', industry: '製造業', owner: '中川翔' },
+      { name: '株式会社メディカルプラス', kana: 'メディカルプラス', pref: '東京都', city: '新宿区', status: '顧客', industry: '医療/福祉', owner: '小林優人' },
+      { name: '株式会社フレッシュフーズ', kana: 'フレッシュフーズ', pref: '千葉県', city: '千葉市', status: '顧客', industry: '飲食業', owner: '中川翔' },
+      { name: '社会福祉法人あおぞら会', kana: 'アオゾラカイ', pref: '埼玉県', city: 'さいたま市', status: '顧客', industry: '医療/福祉', owner: '佐藤美咲' },
+      { name: '株式会社グリーンテック', kana: 'グリーンテック', pref: '福岡県', city: '福岡市博多区', status: '見込み', industry: '製造業', owner: '佐藤美咲', callAgent: '佐藤美咲', callDate: '2026-04-16', callMemo: '初回提案' },
+      { name: '株式会社サンライズ工業', kana: 'サンライズコウギョウ', pref: '広島県', city: '広島市中区', status: '見込み', industry: 'ガテン系', owner: '田中健太', callAgent: '田中健太', callDate: '2026-04-14', callMemo: 'HP提案' },
+      { name: '有限会社ブルースカイ', kana: 'ブルースカイ', pref: '宮城県', city: '仙台市青葉区', status: '見込み', industry: '小売業', owner: '田中健太', callAgent: '田中健太', callDate: '2026-04-17', callMemo: 'LP提案' },
+      { name: '株式会社ノースランド', kana: 'ノースランド', pref: '北海道', city: '札幌市北区', status: '見込み', industry: '建設', owner: '渡辺亮', callAgent: '渡辺亮', callDate: '2026-04-15', callMemo: 'HP提案フォロー' },
+      { name: '合同会社ウエスト商事', kana: 'ウエストショウジ', pref: '大阪府', city: '大阪市西区', status: '顧客', industry: '小売業', owner: '渡辺亮' },
+      { name: '株式会社トータルサポート', kana: 'トータルサポート', pref: '東京都', city: '品川区', status: '見込み', industry: '教育', owner: '佐藤美咲', callAgent: '佐藤美咲', callDate: '2026-04-18', callMemo: 'SEO提案' }
     ];
 
     const companyIds = {};
     for (const c of companies) {
       const exists = await pool.query('SELECT id FROM companies WHERE name=$1', [c.name]);
-      if (exists.rows.length > 0) { companyIds[c.name] = exists.rows[0].id; continue; }
+      if (exists.rows.length > 0) {
+        companyIds[c.name] = exists.rows[0].id;
+        if (c.callDate) await pool.query('UPDATE companies SET next_call_date=$1, next_call_memo=$2, next_call_agent=$3, prospect_owner=$4 WHERE id=$5', [c.callDate, c.callMemo||null, c.callAgent||null, c.owner||null, exists.rows[0].id]);
+        continue;
+      }
       const id = genId(); companyIds[c.name] = id;
       await pool.query(
-        `INSERT INTO companies (id, name, name_kana, prefecture, city, address, zip, representative, status, industry, next_call_date, next_call_memo, next_call_agent, prospect_owner, list_created_date)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)`,
-        [id, c.name, c.nameKana, c.prefecture, c.city, c.address, c.zip, c.representative, c.status, c.industry, c.nextCallDate||null, c.nextCallMemo||null, c.nextCallAgent||null, c.prospectOwner||null, '2026-01-01']
+        `INSERT INTO companies (id, name, name_kana, prefecture, city, zip, representative, status, industry, next_call_date, next_call_memo, next_call_agent, prospect_owner, list_created_date) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
+        [id, c.name, c.kana, c.pref, c.city, '000-0000', c.name.replace(/株式会社|有限会社|合同会社|社会福祉法人/g,'').slice(0,3)+'代表', c.status, c.industry, c.callDate||null, c.callMemo||null, c.callAgent||null, c.owner||null, '2026-01-01']
       );
-      // 電話番号追加
       await pool.query('INSERT INTO phone_numbers (id, company_id, number, type, label) VALUES ($1,$2,$3,$4,$5)', [genId(), id, '03-' + String(Math.floor(Math.random()*9000+1000)) + '-' + String(Math.floor(Math.random()*9000+1000)), '固定', '代表']);
     }
 
-    // 案件（各ステータス段階のダミー）
+    // === 案件（全ステータス網羅、5名分） ===
     const dealData = [
-      { company: '株式会社山田建設', title: 'HPプランB', status: '取材予定', agent: '小林優人', contractDate: '2026-01-15', contractAmount: 500000, grossProfit: 300000, paymentMethod: '信販', creditCompany: 'オリコ', creditStatus: '承認', interviewDate: '2026-04-16', deliveryDate: null, cost: 200000 },
-      { company: '有限会社鈴木電気', title: 'LPプランA', status: '納品予定', agent: '中川翔', contractDate: '2026-02-01', contractAmount: 300000, grossProfit: 180000, paymentMethod: '現金', interviewDate: '2026-02-20', deliveryDate: '2026-04-23', cost: 120000 },
-      { company: '株式会社テクノソリューション', title: 'HPプランA', status: '審査中', agent: '小林優人', contractDate: '2026-01-20', contractAmount: 300000, grossProfit: 200000, paymentMethod: '信販', creditCompany: 'アプラス', creditStatus: '申請中', cost: 100000 },
-      { company: '株式会社コスモ不動産', title: 'HPプランB', status: '入金予定', agent: '小林優人', contractDate: '2026-01-10', contractAmount: 500000, grossProfit: 320000, paymentMethod: '信販', creditCompany: 'オリコ', creditStatus: '承認', interviewDate: '2026-02-05', deliveryDate: '2026-03-01', cost: 180000 },
-      { company: '株式会社ダイヤモンド工機', title: 'LPプランA', status: '入金済み', agent: '中川翔', contractDate: '2025-12-20', contractAmount: 150000, grossProfit: 90000, paymentMethod: '現金', interviewDate: '2026-01-15', deliveryDate: '2026-02-10', cost: 60000 },
-      { company: '株式会社メディカルプラス', title: 'HPプランA', status: '入金済み', agent: '小林優人', contractDate: '2025-11-10', contractAmount: 300000, grossProfit: 180000, paymentMethod: '信販', creditCompany: 'ジャックス', creditStatus: '承認', interviewDate: '2025-12-01', deliveryDate: '2026-01-15', cost: 120000 },
-      { company: '株式会社フレッシュフーズ', title: 'HPプランA', status: '取材完了', agent: '中川翔', contractDate: '2026-02-15', contractAmount: 300000, grossProfit: 180000, paymentMethod: '現金', interviewDate: '2026-03-10', cost: 120000 },
-      { company: '社会福祉法人あおぞら会', title: 'HPプランB', status: '契約済', agent: '小林優人', contractDate: '2026-03-25', contractAmount: 500000, grossProfit: 300000, paymentMethod: '信販', creditCompany: 'オリコ', creditStatus: '申請中', cost: 200000 },
-      { company: '株式会社ビューティーラボ', title: 'HPプランA', status: '商談中', agent: '小林優人', contractDate: '2026-04-01', contractAmount: 300000, grossProfit: 180000, paymentMethod: '現金', cost: 120000 },
-      { company: '有限会社ミライテック', title: 'SEOプラン', status: '納品完了', agent: '中川翔', contractDate: '2026-01-05', contractAmount: 200000, grossProfit: 140000, paymentMethod: '現金', interviewDate: '2026-01-20', deliveryDate: '2026-02-28', cost: 60000 },
-      { company: '株式会社グリーンテック', title: 'LPプランA', status: '入金済み', agent: '佐藤美咲', contractDate: '2025-12-01', contractAmount: 150000, grossProfit: 90000, paymentMethod: '現金', interviewDate: '2025-12-20', deliveryDate: '2026-01-25', cost: 60000 }
+      { co: '株式会社山田建設', title: 'HPプランB', st: '取材予定', ag: '小林優人', cd: '2026-02-15', amt: 500000, gp: 300000, pm: '信販', cc: 'オリコ', cs: '承認', id2: '2026-04-20', dd: null },
+      { co: '有限会社鈴木電気', title: 'LPプランA', st: '納品予定', ag: '中川翔', cd: '2026-02-01', amt: 300000, gp: 180000, pm: '現金', id2: '2026-02-20', dd: '2026-04-25' },
+      { co: '株式会社テクノソリューション', title: 'HPプランA', st: '審査中', ag: '小林優人', cd: '2026-03-20', amt: 300000, gp: 200000, pm: '信販', cc: 'アプラス', cs: '申請中' },
+      { co: '株式会社コスモ不動産', title: 'HPプランB', st: '入金予定', ag: '小林優人', cd: '2026-01-10', amt: 500000, gp: 320000, pm: '信販', cc: 'オリコ', cs: '承認', id2: '2026-02-05', dd: '2026-03-01' },
+      { co: '株式会社ダイヤモンド工機', title: 'LPプランA', st: '入金済み', ag: '中川翔', cd: '2026-01-20', amt: 150000, gp: 90000, pm: '現金', id2: '2026-02-15', dd: '2026-03-10' },
+      { co: '株式会社メディカルプラス', title: 'HPプランA', st: '入金済み', ag: '小林優人', cd: '2025-12-10', amt: 300000, gp: 180000, pm: '信販', cc: 'ジャックス', cs: '承認', id2: '2026-01-01', dd: '2026-02-15' },
+      { co: '株式会社フレッシュフーズ', title: 'HPプランA', st: '取材完了', ag: '中川翔', cd: '2026-02-15', amt: 300000, gp: 180000, pm: '現金', id2: '2026-03-10' },
+      { co: '社会福祉法人あおぞら会', title: 'HPプランB', st: '契約済', ag: '佐藤美咲', cd: '2026-03-25', amt: 500000, gp: 300000, pm: '信販', cc: 'オリコ', cs: '申請中' },
+      { co: '株式会社ビューティーラボ', title: 'HPプランA', st: '商談中', ag: '小林優人', cd: '2026-04-01', amt: 300000, gp: 180000, pm: '現金' },
+      { co: '有限会社ミライテック', title: 'SEOプラン', st: '納品完了', ag: '中川翔', cd: '2026-01-05', amt: 200000, gp: 140000, pm: '現金', id2: '2026-01-20', dd: '2026-02-28' },
+      { co: '株式会社グリーンテック', title: 'LPプランA', st: '入金済み', ag: '佐藤美咲', cd: '2026-01-01', amt: 150000, gp: 90000, pm: '現金', id2: '2026-01-20', dd: '2026-02-25' },
+      { co: '株式会社サンライズ工業', title: 'HPプランB', st: '取材予定', ag: '田中健太', cd: '2026-03-10', amt: 500000, gp: 300000, pm: '信販', cc: 'アプラス', cs: '承認', id2: '2026-04-22' },
+      { co: '有限会社ブルースカイ', title: 'LPプランA', st: '契約済', ag: '田中健太', cd: '2026-04-01', amt: 150000, gp: 90000, pm: '現金' },
+      { co: '株式会社ノースランド', title: 'HPプランA', st: '納品予定', ag: '渡辺亮', cd: '2026-02-20', amt: 300000, gp: 200000, pm: '信販', cc: 'ジャックス', cs: '承認', id2: '2026-03-15', dd: '2026-04-28' },
+      { co: '合同会社ウエスト商事', title: 'SEOプラン', st: '入金済み', ag: '渡辺亮', cd: '2026-01-15', amt: 200000, gp: 140000, pm: '現金', id2: '2026-02-10', dd: '2026-03-20' },
+      { co: '株式会社トータルサポート', title: 'HPプランA', st: '商談中', ag: '佐藤美咲', cd: '2026-04-05', amt: 300000, gp: 180000, pm: '現金' }
     ];
-
+    // 既存案件削除して再投入
+    await pool.query("DELETE FROM deals WHERE memo='' OR memo IS NULL");
     for (const d of dealData) {
-      const cid = companyIds[d.company];
+      const cid = companyIds[d.co];
       if (!cid) continue;
-      const exists = await pool.query('SELECT id FROM deals WHERE company_id=$1 AND title=$2', [cid, d.title]);
-      if (exists.rows.length > 0) continue;
       await pool.query(
-        `INSERT INTO deals (id, company_id, title, status, agent, contract_date, contract_amount, payment_method, credit_company, credit_status, credit_date, credit_amount, interview_date, delivery_date, cost, gross_profit, memo)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)`,
-        [genId(), cid, d.title, d.status, d.agent, d.contractDate, d.contractAmount, d.paymentMethod||'現金', d.creditCompany||null, d.creditStatus||null, null, d.contractAmount||0, d.interviewDate||null, d.deliveryDate||null, d.cost||0, d.grossProfit||0, '']
+        `INSERT INTO deals (id, company_id, title, status, agent, contract_date, contract_amount, payment_method, credit_company, credit_status, credit_amount, interview_date, delivery_date, cost, gross_profit, memo) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
+        [genId(), cid, d.title, d.st, d.ag, d.cd, d.amt, d.pm, d.cc||null, d.cs||null, d.amt, d.id2||null, d.dd||null, d.amt-(d.gp||0), d.gp||0, '']
       );
     }
 
-    // 活動データ（コール）
+    // === 活動データ: コール（2-3月＋4月前半、5名、平日のみ） ===
     const callTypes = ['アポ','決済通話','担当者通話','受付通話','不通','提案完了','決裁','コールのみ'];
     const callResults = ['必要性のYES取れず','話し込めず再コール','諦め判断','アポ取得'];
-    const agentNames = ['小林優人','中川翔','佐藤美咲','田中健太'];
     const companyNames = Object.keys(companyIds);
+    const pick = arr => arr[Math.floor(Math.random() * arr.length)];
 
-    // 過去4ヶ月のコールデータ生成
-    for (let dayOffset = 0; dayOffset < 120; dayOffset++) {
-      const d = new Date(); d.setDate(d.getDate() - dayOffset);
-      if (d.getDay() === 0 || d.getDay() === 6) continue; // 土日除外
+    for (let dayOffset = 0; dayOffset < 75; dayOffset++) {
+      const d = new Date(2026, 1, 1); d.setDate(d.getDate() + dayOffset); // 2026-02-01から
+      if (d.getDay() === 0 || d.getDay() === 6) continue;
+      if (d > new Date()) continue; // 未来日はスキップ
       const dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 
-      for (const agentName of agentNames.slice(0, 2)) { // 小林・中川のみ多めに
-        const numCalls = Math.floor(Math.random() * 8) + 5;
+      for (const agentName of agentNames) {
+        const numCalls = Math.floor(Math.random() * 6) + 3; // 3-8件/日
         for (let i = 0; i < numCalls; i++) {
-          const company = companyNames[Math.floor(Math.random() * companyNames.length)];
-          const cid = companyIds[company];
-          const ct = callTypes[Math.floor(Math.random() * callTypes.length)];
-          const cr = ct === 'アポ' ? 'アポ取得' : callResults[Math.floor(Math.random() * callResults.length)];
+          const co = pick(companyNames);
+          const cid = companyIds[co];
+          const ct = pick(callTypes);
+          const cr = ct === 'アポ' ? 'アポ取得' : pick(callResults);
           const hour = 9 + Math.floor(Math.random() * 8);
           const minute = Math.floor(Math.random() * 60);
           await pool.query(
@@ -1242,28 +1281,31 @@ app.post('/api/seed', async (req, res) => {
       }
     }
 
-    // 訪問データ
+    // === 訪問データ（2-3月＋4月前半、各エージェント週1-2回） ===
     const visitResults = ['未実施','契約','NG','検討','日変'];
-    for (let dayOffset = 0; dayOffset < 60; dayOffset += 3) {
-      const d = new Date(); d.setDate(d.getDate() - dayOffset);
+    for (let dayOffset = 0; dayOffset < 75; dayOffset++) {
+      const d = new Date(2026, 1, 1); d.setDate(d.getDate() + dayOffset);
       if (d.getDay() === 0 || d.getDay() === 6) continue;
+      if (d > new Date()) continue;
       const dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-      const agentName = agentNames[dayOffset % 2];
-      const company = companyNames[Math.floor(Math.random() * companyNames.length)];
-      const cid = companyIds[company];
-      await pool.query(
-        'INSERT INTO activities (id, company_id, type, date, time, agent, visit_result, appointer, visitor, content) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',
-        [genId(), cid, 'アポ', dateStr, '10:00', agentName, visitResults[Math.floor(Math.random() * visitResults.length)], agentName, agentName, '訪問実施']
-      );
+      // 各エージェント: 約30%の確率で訪問あり
+      for (const agentName of agentNames) {
+        if (Math.random() > 0.3) continue;
+        const co = pick(companyNames);
+        const cid = companyIds[co];
+        const hour = 10 + Math.floor(Math.random() * 6);
+        await pool.query(
+          'INSERT INTO activities (id, company_id, type, date, time, agent, visit_result, appointer, visitor, content) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)',
+          [genId(), cid, 'アポ', dateStr, String(hour).padStart(2,'0')+':00', agentName, pick(visitResults), agentName, agentName, '訪問実施']
+        );
+      }
     }
 
-    // 目標データ
-    const months = ['2026-01','2026-02','2026-03','2026-04'];
+    // === 目標データ（2-4月、5名分） ===
+    const months = ['2026-02','2026-03','2026-04'];
     for (const m of months) {
       for (const a of agentData) {
-        const exists = await pool.query('SELECT id FROM targets WHERE agent=$1 AND year_month=$2', [a.name, m]);
-        if (exists.rows.length > 0) continue;
-        const gp = a.team === '1課' ? (a.name === '小林優人' ? 1500000 : 1200000) : 800000;
+        const gp = a.team === '1課' ? (a.name === '小林優人' ? 1500000 : a.name === '渡辺亮' ? 1000000 : 1200000) : 800000;
         const ct = a.team === '1課' ? (a.name === '小林優人' ? 10 : 8) : 5;
         await pool.query(
           'INSERT INTO targets (id, agent, year_month, gross_profit_target, contract_target) VALUES ($1,$2,$3,$4,$5)',
@@ -1272,7 +1314,7 @@ app.post('/api/seed', async (req, res) => {
       }
     }
 
-    res.json({ ok: true, message: 'ダミーデータ投入完了' });
+    res.json({ ok: true, message: 'ダミーデータ投入完了（5名・2-4月）' });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message });
