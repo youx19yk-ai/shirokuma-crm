@@ -68,46 +68,11 @@ function DashboardPage(_props) {
   // ============================================================
   // 初回データ読み込み
   useEffect(function() {
-    // ダッシュボード統計
     API.getDashboardStats().then(function(d) { setStats(d); }).catch(function() {
-      setStats({
-        totalCompanies: 15, byStatus: { "見込み": 8, "顧客": 4, "休眠": 3 },
-        monthCalls: 45, monthAppo: 12, monthDeals: 5,
-        byProspectOwner: { "小林優人": 18, "中川翔": 15 },
-        todayTasks: [
-          { id: "t1", name: "株式会社山田建設", agent: "小林優人", date: todayStr(), memo: "見積もり確認" },
-          { id: "t2", name: "有限会社ミライテック", agent: "中川翔", date: todayStr(), memo: "資料送付後" },
-          { id: "t3", name: "株式会社ビューティーラボ", agent: "小林優人", date: todayStr(), memo: "見積もり回答待ち" },
-          { id: "t4", name: "有限会社海鮮まつり", agent: "中川翔", date: todayStr(), memo: "新店舗オープン" },
-          { id: "t5", name: "株式会社富士観光", agent: "小林優人", date: todayStr(), memo: "GW前に提案" }
-        ],
-        overdue: [
-          { id: "o1", name: "有限会社鈴木電気", agent: "小林優人", date: "2026-04-06" },
-          { id: "o2", name: "株式会社松風建材", agent: "中川翔", date: "2026-04-09" },
-          { id: "o3", name: "合同会社クラフトビール東京", agent: "中川翔", date: "2026-04-09" }
-        ]
-      });
+      setStats({ totalCompanies: 0, byStatus: {}, monthCalls: 0, monthAppo: 0, monthDeals: 0, byProspectOwner: {}, todayTasks: [], overdue: [] });
     });
-    // 日別コール
-    API.getDailyCalls().then(function(d) { setDailyCalls(d); }).catch(function() {
-      setDailyCalls(Array.from({ length: 30 }, function(_, i) {
-        var d2 = new Date(); d2.setDate(d2.getDate() - 29 + i);
-        return { date: d2.getFullYear() + '-' + String(d2.getMonth()+1).padStart(2,'0') + '-' + String(d2.getDate()).padStart(2,'0'), count: String(Math.floor(Math.random() * 15) + 2) };
-      }));
-    });
-    // 案件
-    API.getDeals().then(function(d) { setDeals(d); }).catch(function() {
-      setDeals([
-        { id: "d1", title: "HPプランB", companyName: "山田建設", agent: "小林優人", paymentMethod: "信販", contractDate: "2026-01-15", interviewDate: "2026-04-16", deliveryDate: "", status: "取材予定", contractAmount: 500000, grossProfit: 300000 },
-        { id: "d2", title: "LPプランA", companyName: "鈴木電気", agent: "中川翔", paymentMethod: "現金", contractDate: "2026-02-01", interviewDate: "2026-02-20", deliveryDate: "2026-04-23", status: "納品予定", contractAmount: 300000, grossProfit: 180000 },
-        { id: "d3", title: "HPプランA", companyName: "テクノソリューション", agent: "小林優人", paymentMethod: "信販", contractDate: "2026-01-20", interviewDate: "", deliveryDate: "", status: "審査中", contractAmount: 300000, grossProfit: 200000 },
-        { id: "d4", title: "HPプランB", companyName: "コスモ不動産", agent: "小林優人", paymentMethod: "信販", contractDate: "2026-01-10", interviewDate: "2026-02-05", deliveryDate: "2026-03-01", status: "入金予定", contractAmount: 500000, grossProfit: 320000 },
-        { id: "d5", title: "LPプランA", companyName: "ダイヤモンド工機", agent: "中川翔", paymentMethod: "現金", contractDate: "2025-12-20", interviewDate: "2026-01-15", deliveryDate: "2026-02-10", status: "入金済み", contractAmount: 150000, grossProfit: 90000 },
-        { id: "d6", title: "HPプランA", companyName: "メディカルプラス", agent: "小林優人", paymentMethod: "信販", contractDate: "2025-11-10", interviewDate: "2025-12-01", deliveryDate: "2026-01-15", status: "入金済み", contractAmount: 300000, grossProfit: 180000 },
-        { id: "d7", title: "HPプランA", companyName: "フレッシュフーズ", agent: "中川翔", paymentMethod: "現金", contractDate: "2026-02-15", interviewDate: "2026-03-10", deliveryDate: "", status: "取材完了", contractAmount: 300000, grossProfit: 180000 },
-        { id: "d8", title: "HPプランB", companyName: "あおぞら会", agent: "小林優人", paymentMethod: "信販", contractDate: "2026-03-25", interviewDate: "", deliveryDate: "", status: "契約済", contractAmount: 500000, grossProfit: 300000 }
-      ]);
-    });
+    API.getDailyCalls().then(function(d) { setDailyCalls(d); }).catch(function() { setDailyCalls([]); });
+    API.getDeals().then(function(d) { setDeals(d); }).catch(function() { setDeals([]); });
   }, []);
 
   // KPI読み込み（期間・フィルタ変更時）
@@ -120,14 +85,7 @@ function DashboardPage(_props) {
     API.getKpi(params).then(function(data) {
       setKpiData(data); setKpiLoading(false);
     }).catch(function() {
-      setKpiData({
-        agents: [
-          { name: "小林優人", team: "1課", totalProfit: 1280000, totalAmount: 2000000, contractCount: 8, completedDeals: 6, selfAppoCount: 5, assignedAppoCount: 6, visitCount: 24, selfVisitCount: 18, appoCount: 24, proposalCount: 15, decisionCount: 10, contactCount: 85, callCount: 320, avgProfit: 160000, contractRate: 33, completionRate: 75, visitRate: 75, appoRate: 7.5, proposalRate: 4.7, decisionRate: 3.1, callTypeRates: { "アポ": 7.5, "決済通話": 12.5, "担当者通話": 18.8, "受付通話": 8.1, "不通": 48.4, "提案完了": 4.7, "決裁": 0, "コールのみ": 0 }, targets: [{ yearMonth: p.from.slice(0,7), grossProfitTarget: 1500000, contractTarget: 10 }] },
-          { name: "中川翔", team: "1課", totalProfit: 960000, totalAmount: 1500000, contractCount: 5, completedDeals: 4, selfAppoCount: 3, assignedAppoCount: 4, visitCount: 16, selfVisitCount: 12, appoCount: 16, proposalCount: 10, decisionCount: 7, contactCount: 62, callCount: 245, avgProfit: 192000, contractRate: 31, completionRate: 80, visitRate: 69, appoRate: 6.5, proposalRate: 4.1, decisionRate: 2.9, callTypeRates: { "アポ": 6.5, "決済通話": 11.0, "担当者通話": 16.3, "受付通話": 9.4, "不通": 52.7, "提案完了": 4.1, "決裁": 0, "コールのみ": 0 }, targets: [{ yearMonth: p.from.slice(0,7), grossProfitTarget: 1200000, contractTarget: 8 }] }
-        ],
-        totals: { totalProfit: 2240000, totalAmount: 3500000, contractCount: 13, appoCount: 40, visitCount: 40, callCount: 565, contactCount: 147, proposalCount: 25, decisionCount: 17, avgProfit: 172308 },
-        period: { from: p.from, to: p.to }
-      });
+      setKpiData({ agents: [], totals: {}, period: { from: p.from, to: p.to } });
       setKpiLoading(false);
     });
   }, [period, periodOffset, filterTeam, filterAgent]);

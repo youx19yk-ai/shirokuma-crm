@@ -263,15 +263,8 @@ textarea.form-input { resize: vertical; }
 .confirm-msg { color: #e2e8f0; font-size: 14px; margin-bottom: 20px; }
 .confirm-buttons { display: flex; gap: 12px; justify-content: center; }
 
-/* ---- Dashboard v2 (4-tab) ---- */
-.dash-container { max-width: 1300px; margin: 0 auto; }
-.dash-tabs { display: flex; gap: 2px; margin-bottom: 14px; }
-.dash-tab {
-  background: transparent; border: none; color: #94a3b8; padding: 7px 14px;
-  cursor: pointer; font-size: 13px; font-weight: 500; border-radius: 6px; font-family: inherit;
-}
-.dash-tab.active { background: #252836; color: #7c8cf8; font-weight: 600; }
-.dash-tab:hover { background: #1e2133; }
+/* ---- Dashboard ---- */
+.dash-container { }
 
 .dash-filter-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; }
 .period-btns { display: flex; }
