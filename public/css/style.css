@@ -209,9 +209,10 @@ textarea.form-input { resize: vertical; }
 
 /* ---- Activity timeline ---- */
 .activity-item {
-  display: block; padding: 6px 10px; margin-bottom: 4px;
+  padding: 6px 8px; margin-bottom: 4px;
   border: 1px solid #4a4f6a; border-radius: 6px;
 }
+.activity-item .field-box { position: relative; }
 .activity-item:hover { background: #1e2133; }
 
 /* ---- Master list ---- */
