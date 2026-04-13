@@ -217,14 +217,16 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
         )
       ),
 
-      // 左右2カラム
+      // 集計
       (function() {
         var calls = (sel.activities || []).filter(function(a) { return a.type === "コール"; });
-        var contactCount = calls.filter(function(a) { return a.callType === "担当者通話" || a.callType === "受付通話" || a.callType === "決済通話"; }).length;
-        var tantoCount = calls.filter(function(a) { return a.callType === "担当者通話"; }).length;
-        var uketsuke = calls.filter(function(a) { return a.callType === "受付通話"; }).length;
-        var kessai = calls.filter(function(a) { return a.callType === "決済通話"; }).length;
-        return h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 } },
+        sel._contactCount = calls.filter(function(a) { return a.callType === "担当者通話" || a.callType === "受付通話" || a.callType === "決済通話"; }).length;
+        sel._tantoCount = calls.filter(function(a) { return a.callType === "担当者通話"; }).length;
+        sel._uketsuke = calls.filter(function(a) { return a.callType === "受付通話"; }).length;
+        sel._kessai = calls.filter(function(a) { return a.callType === "決済通話"; }).length;
+      })(),
+      // 左右2カラム
+      h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 } },
           // ---- 左カラム ----
           h("div", null,
             h("div", { style: { display: "flex", gap: 8, marginBottom: 4 } },
@@ -268,8 +270,8 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
               h(EditableField, { label: "メールアドレス", value: sel.email, onSave: function(v) { saveCompany(Object.assign({}, sel, { email: v })); } })
             )
           )
-        );
-      })(),
+        )
+      ),
       // TEL | URL（全幅2列）
       h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 8 } },
         // TEL
@@ -327,10 +329,10 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
       // コール数 | 接触数 | 接触内訳（全幅）
       h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginTop: 8 } },
         h(InfoRow, { label: "コール数", value: sel.callCount || 0 }),
-        h(InfoRow, { label: "接触数", value: contactCount }),
+        h(InfoRow, { label: "接触数", value: sel._contactCount || 0 }),
         h("div", { className: "field-box field-inline" },
           h("span", { className: "info-label-inline" }, "接触内訳"),
-          h("span", { className: "info-value text-xs" }, "担当" + tantoCount + " 受付" + uketsuke + " 決済" + kessai)
+          h("span", { className: "info-value text-xs" }, "担当" + (sel._tantoCount||0) + " 受付" + (sel._uketsuke||0) + " 決済" + (sel._kessai||0))
         )
       ),
       // 次回コール
