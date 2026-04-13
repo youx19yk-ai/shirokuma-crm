@@ -124,7 +124,6 @@ textarea.form-input { resize: vertical; }
 .info-label { font-size: 11px; color: #64748b; margin-bottom: 2px; }
 .info-value { font-size: 13px; color: #cbd5e1; }
 .info-value a { color: #7c8cf8; text-decoration: none; }
-.info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 20px; }
 
 .search-input {
   width: 100%; background: #1a1d27; border: 1px solid #3d4163; border-radius: 6px;
@@ -234,7 +233,6 @@ textarea.form-input { resize: vertical; }
 .flex-between { display: flex; justify-content: space-between; align-items: center; }
 .gap-4 { gap: 4px; }
 .gap-8 { gap: 8px; }
-.gap-10 { gap: 10px; }
 .gap-12 { gap: 12px; }
 .mt-8 { margin-top: 8px; }
 .mt-12 { margin-top: 12px; }
@@ -242,7 +240,6 @@ textarea.form-input { resize: vertical; }
 .mb-8 { margin-bottom: 8px; }
 .mb-12 { margin-bottom: 12px; }
 .mb-16 { margin-bottom: 16px; }
-.w-full { width: 100%; }
 .empty-state { padding: 40px; text-align: center; color: #64748b; font-size: 13px; }
 
 /* ---- Loading ---- */
