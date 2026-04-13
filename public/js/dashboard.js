@@ -66,35 +66,39 @@ function DashboardPage(_props) {
   // ============================================================
   // データ読み込み（初回のみ + フィルタ変更時）
   // ============================================================
-  // 初回データ読み込み
   useEffect(function() {
-    API.getDashboardStats().then(function(d) { setStats(d); }).catch(function() {
-      setStats({ totalCompanies: 0, byStatus: {}, monthCalls: 0, monthAppo: 0, monthDeals: 0, byProspectOwner: {}, todayTasks: [], overdue: [] });
+    var cancelled = false;
+    API.getDashboardStats().then(function(d) { if (!cancelled) setStats(d); }).catch(function() {
+      if (!cancelled) setStats({ totalCompanies: 0, byStatus: {}, monthCalls: 0, monthAppo: 0, monthDeals: 0, byProspectOwner: {}, todayTasks: [], overdue: [] });
     });
-    API.getDailyCalls().then(function(d) { setDailyCalls(d); }).catch(function() { setDailyCalls([]); });
-    API.getDeals().then(function(d) { setDeals(d); }).catch(function() { setDeals([]); });
+    API.getDailyCalls().then(function(d) { if (!cancelled) setDailyCalls(d); }).catch(function() { if (!cancelled) setDailyCalls([]); });
+    API.getDeals().then(function(d) { if (!cancelled) setDeals(d); }).catch(function() { if (!cancelled) setDeals([]); });
+    return function() { cancelled = true; };
   }, []);
 
   // KPI読み込み（期間・フィルタ変更時）
   useEffect(function() {
+    var cancelled = false;
     setKpiLoading(true);
     var p = calcPeriod(period, periodOffset);
     var params = { from: p.from, to: p.to };
     if (filterTeam) params.team = filterTeam;
     if (filterAgent) params.agent = filterAgent;
     API.getKpi(params).then(function(data) {
-      setKpiData(data); setKpiLoading(false);
+      if (!cancelled) { setKpiData(data); setKpiLoading(false); }
     }).catch(function() {
-      setKpiData({ agents: [], totals: {}, period: { from: p.from, to: p.to } });
-      setKpiLoading(false);
+      if (!cancelled) { setKpiData({ agents: [], totals: {}, period: { from: p.from, to: p.to } }); setKpiLoading(false); }
     });
+    return function() { cancelled = true; };
   }, [period, periodOffset, filterTeam, filterAgent]);
 
   // カレンダー読み込み
   useEffect(function() {
-    API.getCalendar(calYear, calMonth).then(function(data) { setCalData(data); }).catch(function() {
-      setCalData({ calls: [], visits: [], deals: [] });
+    var cancelled = false;
+    API.getCalendar(calYear, calMonth).then(function(data) { if (!cancelled) setCalData(data); }).catch(function() {
+      if (!cancelled) setCalData({ calls: [], visits: [], deals: [] });
     });
+    return function() { cancelled = true; };
   }, [calYear, calMonth]);
 
   // ============================================================
