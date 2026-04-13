@@ -270,7 +270,6 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
               h(EditableField, { label: "メールアドレス", value: sel.email, onSave: function(v) { saveCompany(Object.assign({}, sel, { email: v })); } })
             )
           )
-        )
       ),
       // TEL | URL（全幅2列）
       h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 8 } },
