@@ -555,8 +555,10 @@ function DashboardPage(_props) {
   // 制作管理タブ
   // ============================================================
   function renderProduction() {
+    console.log('renderProduction called, deals count:', deals.length);
     var prodStatuses = ["契約済","審査中","取材予定","取材完了","納品予定","納品完了","入金予定","入金済み"];
     var prodDeals = deals.filter(function(d) { return d.status !== "商談中"; });
+    console.log('prodDeals:', prodDeals.length);
     var filtered = prodDeals.filter(function(d) {
       if (prodAgent && d.agent !== prodAgent) return false;
       if (prodStatus && d.status !== prodStatus) return false;
@@ -666,12 +668,14 @@ function DashboardPage(_props) {
   // ============================================================
   // メインレンダー
   // ============================================================
+  console.log('DashboardPage render, tab:', dashTab);
   var content;
   if (dashTab === "performance") content = renderPerformance();
   else if (dashTab === "tasks") content = renderTasks();
   else if (dashTab === "schedule") content = renderSchedule();
-  else if (dashTab === "production") content = renderProduction();
+  else if (dashTab === "production") { console.log('calling renderProduction'); content = renderProduction(); console.log('renderProduction done'); }
   else content = null;
+  console.log('render complete');
 
   return h("div", { className: "dash-container" }, tabBar, content);
 }
