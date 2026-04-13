@@ -4,6 +4,42 @@
 function MasterPage({ plans, agents, creditCompanies, onReload }) {
   var _tab = useState("plans"), tab = _tab[0], setTab = _tab[1];
 
+  // 目標設定
+  var _targets = useState([]), targets = _targets[0], setTargets = _targets[1];
+  var _tgLoad = useState(false), tgLoading = _tgLoad[0], setTgLoading = _tgLoad[1];
+  var _tgMonth = useState(function() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'); }), tgMonth = _tgMonth[0], setTgMonth = _tgMonth[1];
+  var _tgEdit = useState({}), tgEdit = _tgEdit[0], setTgEdit = _tgEdit[1]; // { agentName: { grossProfitTarget, contractTarget } }
+
+  function loadTargets() {
+    setTgLoading(true);
+    API.getTargets().then(function(data) { setTargets(data); setTgLoading(false); }).catch(function() { setTgLoading(false); });
+  }
+  useEffect(function() { loadTargets(); }, []);
+
+  function getTargetForAgent(agentName, month) {
+    return targets.find(function(t) { return t.agent === agentName && t.yearMonth === month; });
+  }
+
+  function saveTarget(agentName) {
+    var edit = tgEdit[agentName];
+    if (!edit) return;
+    var existing = getTargetForAgent(agentName, tgMonth);
+    var data = { agent: agentName, yearMonth: tgMonth, grossProfitTarget: parseInt(edit.grossProfitTarget) || 0, contractTarget: parseInt(edit.contractTarget) || 0 };
+    var promise = existing ? API.updateTarget(existing.id, data) : API.createTarget(data);
+    promise.then(function() { loadTargets(); });
+  }
+
+  function initEditForMonth(month) {
+    var edits = {};
+    (agents || []).forEach(function(a) {
+      var t = targets.find(function(tt) { return tt.agent === a.name && tt.yearMonth === month; });
+      edits[a.name] = { grossProfitTarget: t ? t.grossProfitTarget : 0, contractTarget: t ? t.contractTarget : 0 };
+    });
+    setTgEdit(edits);
+  }
+
+  useEffect(function() { initEditForMonth(tgMonth); }, [tgMonth, targets, agents]);
+
   // プラン追加
   var _pn = useState({ name: "", category: "", price: 0, description: "" }), planData = _pn[0], setPlanData = _pn[1];
   var _sp = useState(false), showPlanForm = _sp[0], setShowPlanForm = _sp[1];
@@ -46,7 +82,7 @@ function MasterPage({ plans, agents, creditCompanies, onReload }) {
   return h("div", null,
     // タブ
     h("div", { className: "flex gap-4 mb-16" },
-      [["plans","商品プラン"],["agents","担当者"],["credit","信販会社"]].map(function(t) {
+      [["plans","商品プラン"],["agents","担当者"],["credit","信販会社"],["targets","目標設定"]].map(function(t) {
         return h("button", { key: t[0], className: "btn btn-sm " + (tab === t[0] ? "btn-primary" : "btn-ghost"),
           onClick: function() { setTab(t[0]); }
         }, t[1]);
@@ -163,6 +199,52 @@ function MasterPage({ plans, agents, creditCompanies, onReload }) {
               h("button", { className: "btn-icon btn-sm", onClick: function() { deleteCredit(c.id); } }, "×")
             );
           })
+    ),
+
+    // ---- 目標設定 ----
+    tab === "targets" && h("div", { className: "card" },
+      h("div", { className: "card-header" },
+        h("div", { className: "card-title" }, "目標設定"),
+        h("div", { className: "flex gap-8" },
+          h("input", { type: "month", className: "form-input", style: { maxWidth: 160, padding: "4px 8px", fontSize: 12 }, value: tgMonth,
+            onChange: function(e) { setTgMonth(e.target.value); }
+          })
+        )
+      ),
+      tgLoading
+        ? h("div", { className: "text-muted text-sm", style: { padding: 20 } }, "読み込み中...")
+        : (agents || []).length === 0
+          ? h("div", { className: "empty-state" }, "担当者を先に登録してください")
+          : h("table", { className: "table" },
+              h("thead", null,
+                h("tr", null,
+                  ["担当者","課","粗利目標","契約数目標","操作"].map(function(th) { return h("th", { key: th }, th); })
+                )
+              ),
+              h("tbody", null,
+                (agents || []).map(function(a) {
+                  var edit = tgEdit[a.name] || { grossProfitTarget: 0, contractTarget: 0 };
+                  var existing = getTargetForAgent(a.name, tgMonth);
+                  return h("tr", { key: a.id, style: { cursor: "default" } },
+                    h("td", { style: { fontWeight: 600 } }, a.name),
+                    h("td", { className: "text-muted" }, a.team || "―"),
+                    h("td", null,
+                      h("input", { className: "search-input", type: "number", style: { width: 130 }, value: edit.grossProfitTarget,
+                        onChange: function(e) { var v = e.target.value; setTgEdit(function(prev) { var n = Object.assign({}, prev); n[a.name] = Object.assign({}, n[a.name], { grossProfitTarget: v }); return n; }); }
+                      })
+                    ),
+                    h("td", null,
+                      h("input", { className: "search-input", type: "number", style: { width: 80 }, value: edit.contractTarget,
+                        onChange: function(e) { var v = e.target.value; setTgEdit(function(prev) { var n = Object.assign({}, prev); n[a.name] = Object.assign({}, n[a.name], { contractTarget: v }); return n; }); }
+                      })
+                    ),
+                    h("td", null,
+                      h("button", { className: "btn btn-primary btn-sm", onClick: function() { saveTarget(a.name); } }, existing ? "更新" : "保存")
+                    )
+                  );
+                })
+              )
+            )
     )
   );
 }
