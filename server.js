@@ -146,6 +146,7 @@ async function initDB(retries = 10, delay = 3000) {
     CREATE TABLE IF NOT EXISTS agents (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
+      team TEXT DEFAULT '',
       created_at TIMESTAMP DEFAULT NOW()
     );
 
@@ -153,6 +154,16 @@ async function initDB(retries = 10, delay = 3000) {
     CREATE TABLE IF NOT EXISTS credit_companies (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+
+    -- 目標設定
+    CREATE TABLE IF NOT EXISTS targets (
+      id TEXT PRIMARY KEY,
+      agent TEXT NOT NULL,
+      year_month TEXT NOT NULL,
+      gross_profit_target INTEGER DEFAULT 0,
+      contract_target INTEGER DEFAULT 0,
       created_at TIMESTAMP DEFAULT NOW()
     );
   `);
@@ -189,6 +200,7 @@ async function initDB(retries = 10, delay = 3000) {
   try { await pool.query("ALTER TABLE companies ADD COLUMN email TEXT DEFAULT ''"); } catch(e) {}
   try { await pool.query("ALTER TABLE companies ADD COLUMN prospect_owner TEXT DEFAULT ''"); } catch(e) {}
   try { await pool.query("ALTER TABLE companies ADD COLUMN has_web TEXT DEFAULT ''"); } catch(e) {}
+  try { await pool.query("ALTER TABLE agents ADD COLUMN team TEXT DEFAULT ''"); } catch(e) {}
   try { await pool.query("ALTER TABLE companies ADD COLUMN next_call_agent TEXT DEFAULT ''"); } catch(e) {}
   try { await pool.query("ALTER TABLE activities ADD COLUMN visit_role TEXT DEFAULT ''"); } catch(e) {}
   try { await pool.query("ALTER TABLE activities ADD COLUMN visitor TEXT DEFAULT ''"); } catch(e) {}
@@ -688,6 +700,137 @@ app.get('/api/dashboard/stats', async (req, res) => {
   }
 });
 
+// KPI集計API（期間・担当者・チーム指定可能）
+app.get('/api/dashboard/kpi', async (req, res) => {
+  try {
+    const { from, to, agent, team } = req.query;
+    const dateFrom = from || '2000-01-01';
+    const dateTo = to || '2099-12-31';
+
+    // 担当者リスト取得（チームフィルタ用）
+    const agentsRes = await pool.query('SELECT * FROM agents');
+    const allAgents = agentsRes.rows;
+    let agentNames = allAgents.map(a => a.name);
+    if (team) agentNames = allAgents.filter(a => a.team === team).map(a => a.name);
+    if (agent) agentNames = [agent];
+
+    // 全活動取得
+    const actsRes = await pool.query("SELECT * FROM activities WHERE date >= $1 AND date <= $2", [dateFrom, dateTo]);
+    const acts = actsRes.rows;
+
+    // 全案件取得
+    const dealsRes = await pool.query("SELECT * FROM deals WHERE contract_date >= $1 AND contract_date <= $2", [dateFrom, dateTo]);
+    const deals = dealsRes.rows;
+
+    // 目標取得
+    const targetsRes = await pool.query('SELECT * FROM targets');
+    const targets = targetsRes.rows;
+
+    // 担当者ごとの集計
+    const agentKpis = agentNames.map(name => {
+      const myActs = acts.filter(a => a.agent === name);
+      const myCalls = myActs.filter(a => a.type === 'コール');
+      const myVisits = myActs.filter(a => a.type === 'アポ');
+      const myDeals = deals.filter(d => d.agent === name && d.status !== '商談中');
+
+      const callCount = myCalls.length;
+      const contactCount = myCalls.filter(a => ['担当者通話','受付通話','決済通話','提案完了','決裁'].includes(a.call_type)).length;
+      const proposalCount = myCalls.filter(a => a.call_type === '提案完了').length;
+      const decisionCount = myCalls.filter(a => a.call_type === '決裁').length;
+      const appoCallCount = myCalls.filter(a => a.call_type === 'アポ').length;
+
+      // アポ数（通話結果がアポ系のもの）
+      const appoResults = myCalls.filter(a => ['新規アポ','再訪アポ','クロスセルアポ','アップセルアポ','担当者アポ','来週アポ'].includes(a.call_result));
+      const appoCount = appoResults.length;
+
+      // 自己アポ（アポ者=自分）vs 振りアポ
+      const selfAppoCount = myVisits.filter(v => v.appointer === name).length;
+      const assignedAppoCount = myVisits.filter(v => v.appointer && v.appointer !== name).length;
+
+      // 行動数（訪問実施）
+      const visitCount = myVisits.length;
+      const selfVisitCount = myVisits.filter(v => v.visitor === name).length;
+
+      // 契約
+      const contractCount = myDeals.length;
+      const totalAmount = myDeals.reduce((s, d) => s + (d.contract_amount || 0), 0);
+      const totalProfit = myDeals.reduce((s, d) => s + (d.gross_profit || 0), 0);
+      const avgProfit = contractCount > 0 ? Math.round(totalProfit / contractCount) : 0;
+
+      // 訪問結果が契約のもの
+      const contractVisits = myVisits.filter(v => v.visit_result === '契約').length;
+
+      // 歩留まり率
+      const contractRate = appoCount > 0 ? Math.round((contractVisits / appoCount) * 100) : 0;
+      const visitRate = appoCount > 0 ? Math.round((visitCount / appoCount) * 100) : 0;
+      const appoRate = callCount > 0 ? Math.round((appoCount / callCount) * 100) : 0;
+      const proposalRate = callCount > 0 ? Math.round((proposalCount / callCount) * 100) : 0;
+      const decisionRate = callCount > 0 ? Math.round((decisionCount / callCount) * 100) : 0;
+      const completionRate = visitCount > 0 ? Math.round((contractVisits / visitCount) * 100) : 0;
+
+      // 各通話率
+      const callTypeRates = {};
+      ['アポ','決済通話','担当者通話','受付通話','不通','提案完了','決裁'].forEach(t => {
+        callTypeRates[t] = callCount > 0 ? Math.round((myCalls.filter(a => a.call_type === t).length / callCount) * 100) : 0;
+      });
+
+      // 目標
+      const myTargets = targets.filter(t => t.agent === name);
+
+      return {
+        name,
+        team: (allAgents.find(a => a.name === name) || {}).team || '',
+        // KGI
+        totalProfit,
+        totalAmount,
+        // KPI量
+        contractCount,
+        selfAppoCount,
+        assignedAppoCount,
+        visitCount,
+        selfVisitCount,
+        // 活動指標
+        appoCount,
+        proposalCount,
+        decisionCount,
+        contactCount,
+        callCount,
+        // 歩留まり率
+        avgProfit,
+        contractRate,
+        completionRate,
+        visitRate,
+        appoRate,
+        proposalRate,
+        decisionRate,
+        callTypeRates,
+        // 目標
+        targets: myTargets.map(t => ({ yearMonth: t.year_month, grossProfitTarget: t.gross_profit_target, contractTarget: t.contract_target }))
+      };
+    });
+
+    // 全体集計
+    const totals = {
+      totalProfit: agentKpis.reduce((s, a) => s + a.totalProfit, 0),
+      totalAmount: agentKpis.reduce((s, a) => s + a.totalAmount, 0),
+      contractCount: agentKpis.reduce((s, a) => s + a.contractCount, 0),
+      appoCount: agentKpis.reduce((s, a) => s + a.appoCount, 0),
+      visitCount: agentKpis.reduce((s, a) => s + a.visitCount, 0),
+      callCount: agentKpis.reduce((s, a) => s + a.callCount, 0),
+      contactCount: agentKpis.reduce((s, a) => s + a.contactCount, 0),
+      proposalCount: agentKpis.reduce((s, a) => s + a.proposalCount, 0),
+      decisionCount: agentKpis.reduce((s, a) => s + a.decisionCount, 0),
+      avgProfit: agentKpis.reduce((s, a) => s + a.contractCount, 0) > 0
+        ? Math.round(agentKpis.reduce((s, a) => s + a.totalProfit, 0) / agentKpis.reduce((s, a) => s + a.contractCount, 0)) : 0
+    };
+
+    res.json({ agents: agentKpis, totals, period: { from: dateFrom, to: dateTo } });
+  } catch (e) {
+    console.error(e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/api/dashboard/daily-calls', async (req, res) => {
   try {
     const { rows } = await pool.query(`
@@ -855,19 +998,25 @@ app.delete('/api/plans/:id', async (req, res) => {
 // 担当者マスタ
 app.get('/api/agents', async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM agents ORDER BY created_at');
-    res.json(rows);
+    const { rows } = await pool.query('SELECT * FROM agents ORDER BY team, created_at');
+    res.json(rows.map(a => ({ id: a.id, name: a.name, team: a.team || '' })));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/agents', async (req, res) => {
   const id = genId();
   try {
-    await pool.query('INSERT INTO agents (id, name) VALUES ($1, $2)', [id, req.body.name]);
+    await pool.query('INSERT INTO agents (id, name, team) VALUES ($1, $2, $3)', [id, req.body.name, req.body.team||'']);
     res.json({ id });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+app.put('/api/agents/:id', async (req, res) => {
+  try {
+    await pool.query('UPDATE agents SET name=$1, team=$2 WHERE id=$3', [req.body.name, req.body.team||'', req.params.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 app.delete('/api/agents/:id', async (req, res) => {
   try {
     await pool.query('DELETE FROM agents WHERE id=$1', [req.params.id]);
@@ -899,6 +1048,34 @@ app.delete('/api/credit-companies/:id', async (req, res) => {
 });
 
 // ============================================================
+// 目標設定 API
+app.get('/api/targets', async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT * FROM targets ORDER BY year_month DESC, agent');
+    res.json(rows.map(t => ({ id: t.id, agent: t.agent, yearMonth: t.year_month, grossProfitTarget: t.gross_profit_target, contractTarget: t.contract_target })));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/targets', async (req, res) => {
+  const t = req.body; const id = genId();
+  try {
+    await pool.query('INSERT INTO targets (id, agent, year_month, gross_profit_target, contract_target) VALUES ($1,$2,$3,$4,$5)',
+      [id, t.agent, t.yearMonth, t.grossProfitTarget||0, t.contractTarget||0]);
+    res.json({ id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.put('/api/targets/:id', async (req, res) => {
+  const t = req.body;
+  try {
+    await pool.query('UPDATE targets SET agent=$1, year_month=$2, gross_profit_target=$3, contract_target=$4 WHERE id=$5',
+      [t.agent, t.yearMonth, t.grossProfitTarget||0, t.contractTarget||0, req.params.id]);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.delete('/api/targets/:id', async (req, res) => {
+  try { await pool.query('DELETE FROM targets WHERE id=$1', [req.params.id]); res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // 検索条件 API
 // ============================================================
 

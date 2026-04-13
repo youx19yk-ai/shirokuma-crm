@@ -43,6 +43,7 @@ const API = {
 
   // ダッシュボード
   getDashboardStats: () => fetch('/api/dashboard/stats').then(apiJson),
+  getKpi: (params) => { var qs = params ? '?' + new URLSearchParams(params).toString() : ''; return fetch('/api/dashboard/kpi' + qs).then(apiJson); },
   getDailyCalls: () => fetch('/api/dashboard/daily-calls').then(apiJson),
   getByAgent: () => fetch('/api/dashboard/by-agent').then(apiJson),
   getAgentReport: (name, from, to) => {
@@ -61,12 +62,19 @@ const API = {
   deletePlan: (id) => fetch('/api/plans/' + id, { method: 'DELETE' }).then(apiJson),
 
   getAgents: () => fetch('/api/agents').then(apiJson),
-  createAgent: (name) => fetch('/api/agents', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) }).then(apiJson),
+  createAgent: (data) => fetch('/api/agents', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(typeof data === 'string' ? { name: data } : data) }).then(apiJson),
+  updateAgent: (id, data) => fetch('/api/agents/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(apiJson),
   deleteAgent: (id) => fetch('/api/agents/' + id, { method: 'DELETE' }).then(apiJson),
 
   getCreditCompanies: () => fetch('/api/credit-companies').then(apiJson),
   createCreditCompany: (name) => fetch('/api/credit-companies', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) }).then(apiJson),
   deleteCreditCompany: (id) => fetch('/api/credit-companies/' + id, { method: 'DELETE' }).then(apiJson),
+
+  // 目標設定
+  getTargets: () => fetch('/api/targets').then(apiJson),
+  createTarget: (t) => fetch('/api/targets', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(t) }).then(apiJson),
+  updateTarget: (id, t) => fetch('/api/targets/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(t) }).then(apiJson),
+  deleteTarget: (id) => fetch('/api/targets/' + id, { method: 'DELETE' }).then(apiJson),
 
   // 検索条件
   getFilters: () => fetch('/api/filters').then(apiJson),

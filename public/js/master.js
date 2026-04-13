@@ -26,9 +26,10 @@ function MasterPage({ plans, agents, creditCompanies, onReload }) {
 
   // 担当者追加
   var _an = useState(""), agentName = _an[0], setAgentName = _an[1];
+  var _at = useState(""), agentTeam = _at[0], setAgentTeam = _at[1];
   var addAgent = function() {
     if (!agentName) return;
-    API.createAgent(agentName).then(function() { setAgentName(""); onReload(); });
+    API.createAgent({ name: agentName, team: agentTeam }).then(function() { setAgentName(""); setAgentTeam(""); onReload(); });
   };
   var deleteAgent = function(id) { API.deleteAgent(id).then(function() { onReload(); }); };
 
@@ -111,19 +112,36 @@ function MasterPage({ plans, agents, creditCompanies, onReload }) {
         h("div", { className: "card-title" }, "担当者")
       ),
       h("div", { className: "flex gap-8 mb-12" },
-        h("input", { className: "form-input", style: { maxWidth: 300 }, value: agentName, onChange: function(e) { setAgentName(e.target.value); }, placeholder: "担当者名を入力",
+        h("input", { className: "form-input", style: { maxWidth: 200 }, value: agentName, onChange: function(e) { setAgentName(e.target.value); }, placeholder: "担当者名",
           onKeyDown: function(e) { if (e.key === "Enter") addAgent(); }
         }),
+        h("select", { className: "form-input", style: { maxWidth: 100 }, value: agentTeam, onChange: function(e) { setAgentTeam(e.target.value); } },
+          h("option", { value: "" }, "課"),
+          h("option", { value: "1課" }, "1課"),
+          h("option", { value: "2課" }, "2課")
+        ),
         h("button", { className: "btn btn-primary btn-sm", onClick: addAgent }, "追加")
       ),
       agents.length === 0
         ? h("div", { className: "empty-state" }, "担当者が登録されていません")
-        : agents.map(function(a) {
-            return h("div", { key: a.id, className: "master-item" },
-              h("span", { style: { fontWeight: 600 } }, a.name),
-              h("button", { className: "btn-icon btn-sm", onClick: function() { deleteAgent(a.id); } }, "×")
-            );
-          })
+        : h("table", { className: "table" },
+            h("thead", null, h("tr", null, ["担当者名","課","操作"].map(function(th) { return h("th", { key: th }, th); }))),
+            h("tbody", null, agents.map(function(a) {
+              return h("tr", { key: a.id, style: { cursor: "default" } },
+                h("td", { style: { fontWeight: 600 } }, a.name),
+                h("td", null,
+                  h("select", { className: "form-input", style: { padding: "2px 4px", fontSize: 12, width: 70 }, value: a.team || "",
+                    onChange: function(e) { API.updateAgent(a.id, { name: a.name, team: e.target.value }).then(function() { onReload(); }); }
+                  },
+                    h("option", { value: "" }, "―"),
+                    h("option", { value: "1課" }, "1課"),
+                    h("option", { value: "2課" }, "2課")
+                  )
+                ),
+                h("td", null, h("button", { className: "btn-icon btn-sm", onClick: function() { deleteAgent(a.id); } }, "×"))
+              );
+            }))
+          )
     ),
 
     // ---- 信販会社 ----
