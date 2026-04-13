@@ -6,23 +6,23 @@
 <title>CRM</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
-<link rel="stylesheet" href="/css/style.css?v=20260414a">
+<link rel="stylesheet" href="/css/style.css?v=20260414b">
 </head>
 <body>
 <div id="root"></div>
-<script src="/js/api.js?v=20260414a"></script>
-<script src="/js/components.js?v=20260414a"></script>
-<script src="/js/dashboard.js?v=20260414a"></script>
-<script src="/js/companies.js?v=20260414a"></script>
-<script src="/js/deals.js?v=20260414a"></script>
-<script src="/js/calendar.js?v=20260414a"></script>
-<script src="/js/master.js?v=20260414a"></script>
+<script src="/js/api.js?v=20260414b"></script>
+<script src="/js/components.js?v=20260414b"></script>
+<script src="/js/dashboard.js?v=20260414b"></script>
+<script src="/js/companies.js?v=20260414b"></script>
+<script src="/js/deals.js?v=20260414b"></script>
+
+<script src="/js/master.js?v=20260414b"></script>
 <script>
 // ============================================================
 // App ルーター
 // ============================================================
 function App() {
-  var _page = useState("companies"), page = _page[0], setPage = _page[1];
+  var _page = useState("schedule"), page = _page[0], setPage = _page[1];
   var _cos = useState([]), companies = _cos[0], setCompanies = _cos[1];
   var _sel = useState(null), selectedId = _sel[0], setSelectedId = _sel[1];
   var _loading = useState(true), loading = _loading[0], setLoading = _loading[1];
@@ -97,9 +97,10 @@ function App() {
   }
 
   // ページ内容
+  var dashPages = ["schedule","tasks","performance","production"];
   var content;
-  if (page === "dashboard") {
-    content = h(DashboardPage, { onNavigate: navigate, agents: agents, plans: plans, creditCompanies: creditCompanies });
+  if (dashPages.indexOf(page) >= 0) {
+    content = h(DashboardPage, { tab: page, onNavigate: navigate, agents: agents, plans: plans, creditCompanies: creditCompanies });
   } else if (page === "companies") {
     content = h(CompaniesPage, {
       companies: companies, selectedId: selectedId,
@@ -114,8 +115,6 @@ function App() {
       agents: agents, plans: plans, creditCompanies: creditCompanies,
       onNavigate: navigate
     });
-  } else if (page === "calendar") {
-    content = h(CalendarPage, { onNavigate: navigate });
   } else if (page === "master") {
     content = h(MasterPage, {
       plans: plans, agents: agents, creditCompanies: creditCompanies,
@@ -127,13 +126,15 @@ function App() {
     // ヘッダー
     h("div", { className: "header" },
       h("div", { className: "logo" }, "CRM"),
-      h("button", { className: "nav-btn" + (page === "dashboard" ? " active" : ""), onClick: function() { setPage("dashboard"); } }, "\u30C0\u30C3\u30B7\u30E5\u30DC\u30FC\u30C9"),
-      h("button", { className: "nav-btn" + (page === "companies" ? " active" : ""), onClick: function() { setPage("companies"); } }, "\u4F01\u696D\u7BA1\u7406"),
-      h("button", { className: "nav-btn" + (page === "deals" ? " active" : ""), onClick: function() { setPage("deals"); } }, "\u6848\u4EF6\u7BA1\u7406"),
-      h("button", { className: "nav-btn" + (page === "calendar" ? " active" : ""), onClick: function() { setPage("calendar"); } }, "\u30AB\u30EC\u30F3\u30C0\u30FC"),
-      h("button", { className: "nav-btn" + (page === "master" ? " active" : ""), onClick: function() { setPage("master"); } }, "\u30DE\u30B9\u30BF"),
+      h("button", { className: "nav-btn" + (page === "schedule" ? " active" : ""), onClick: function() { setPage("schedule"); } }, "スケジュール"),
+      h("button", { className: "nav-btn" + (page === "tasks" ? " active" : ""), onClick: function() { setPage("tasks"); } }, "当日"),
+      h("button", { className: "nav-btn" + (page === "companies" ? " active" : ""), onClick: function() { setPage("companies"); } }, "企業管理"),
+      h("button", { className: "nav-btn" + (page === "deals" ? " active" : ""), onClick: function() { setPage("deals"); } }, "案件管理"),
+      h("button", { className: "nav-btn" + (page === "production" ? " active" : ""), onClick: function() { setPage("production"); } }, "制作管理"),
+      h("button", { className: "nav-btn" + (page === "performance" ? " active" : ""), onClick: function() { setPage("performance"); } }, "成績管理"),
+      h("button", { className: "nav-btn" + (page === "master" ? " active" : ""), onClick: function() { setPage("master"); } }, "マスタ"),
       h("div", { className: "nav-spacer" }),
-      h("button", { className: "btn btn-primary btn-sm", onClick: function() { setPage("companies"); } }, "+ \u65B0\u898F\u4F01\u696D")
+      h("button", { className: "btn btn-primary btn-sm", onClick: function() { setPage("companies"); } }, "+ 新規企業")
     ),
     // コンテンツ
     h("div", { style: { flex: 1, overflow: page === "companies" ? "hidden" : "auto", display: "flex", flexDirection: "column", padding: (page !== "companies" ? "20px" : "0") } },

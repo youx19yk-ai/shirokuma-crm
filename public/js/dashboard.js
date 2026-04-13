@@ -5,9 +5,7 @@ function DashboardPage(_props) {
   var onNavigate = _props.onNavigate;
   var agents = _props.agents || [];
   var plans = _props.plans || [];
-
-  // --- タブ ---
-  var _tab = useState("performance"), dashTab = _tab[0], setDashTab = _tab[1];
+  var dashTab = _props.tab || "performance";
 
   // --- 成績管理 State ---
   var _period = useState("month"), period = _period[0], setPeriod = _period[1];
@@ -147,25 +145,6 @@ function DashboardPage(_props) {
   var teamAgents = agents.filter(function(a) {
     return !filterTeam || a.team === filterTeam;
   });
-
-  // ============================================================
-  // タブレンダー
-  // ============================================================
-  var TABS = [
-    ["performance", "成績管理"],
-    ["tasks", "当日タスク"],
-    ["schedule", "営業スケジュール"],
-    ["production", "制作管理"]
-  ];
-
-  // タブバー
-  var tabBar = h("div", { className: "dash-tabs" },
-    TABS.map(function(t) {
-      return h("button", { key: t[0], className: "dash-tab" + (dashTab === t[0] ? " active" : ""),
-        onClick: function() { setDashTab(t[0]); }
-      }, t[1]);
-    })
-  );
 
   // ============================================================
   // 成績管理タブ
@@ -666,12 +645,9 @@ function DashboardPage(_props) {
   // ============================================================
   // メインレンダー
   // ============================================================
-  var content;
-  if (dashTab === "performance") content = renderPerformance();
-  else if (dashTab === "tasks") content = renderTasks();
-  else if (dashTab === "schedule") content = renderSchedule();
-  else if (dashTab === "production") content = renderProduction();
-  else content = null;
-
-  return h("div", { className: "dash-container" }, tabBar, content);
+  if (dashTab === "performance") return h("div", { className: "dash-container" }, renderPerformance());
+  if (dashTab === "tasks") return h("div", { className: "dash-container" }, renderTasks());
+  if (dashTab === "schedule") return h("div", { className: "dash-container" }, renderSchedule());
+  if (dashTab === "production") return h("div", { className: "dash-container" }, renderProduction());
+  return h("div", { className: "dash-container" }, renderPerformance());
 }
