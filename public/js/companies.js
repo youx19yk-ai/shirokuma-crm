@@ -229,6 +229,14 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
       h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 } },
           // ---- 左カラム ----
           h("div", null,
+            // WEBあり/なしトグル
+            h("div", { className: "field-box", style: { display: "flex", gap: 8, marginBottom: 4, padding: "3px 8px" } },
+              h("span", { className: "info-label-inline" }, "WEB"),
+              h("button", { className: "btn btn-sm " + (sel.hasWeb === "あり" ? "btn-primary" : "btn-ghost"), style: { padding: "1px 10px", fontSize: 11 },
+                onClick: function() { saveCompany(Object.assign({}, sel, { hasWeb: "あり" })); } }, "あり"),
+              h("button", { className: "btn btn-sm " + (sel.hasWeb === "なし" ? "btn-danger" : "btn-ghost"), style: { padding: "1px 10px", fontSize: 11 },
+                onClick: function() { saveCompany(Object.assign({}, sel, { hasWeb: "なし" })); } }, "なし")
+            ),
             h("div", { style: { display: "flex", gap: 8, marginBottom: 4 } },
               h("div", { style: { flex: 1 } }, agents.length > 0
                 ? h(EditableSelect, { label: "見込み者", value: sel.prospectOwner, options: agents.map(function(a) { return a.name; }), onSave: function(v) { saveCompany(Object.assign({}, sel, { prospectOwner: v })); } })
@@ -458,18 +466,18 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
                   )
                 );
               } else {
-                // 訪問: 日付|訪問分類|結果|内容|訪問者|アポ|リサーチ
-                return h("div", { key: a.id, className: "activity-item", style: { display: "grid", gridTemplateColumns: "90px 90px 90px 1fr 70px 70px 70px", gap: 4, alignItems: "start" } },
+                // 訪問: 日付|訪問分類|結果|内容|訪問者|アポ|リサーチ|削除
+                return h("div", { key: a.id, className: "activity-item", style: { display: "grid", gridTemplateColumns: "85px 85px 85px 1fr 65px 65px 65px 30px", gap: 4, alignItems: "start" } },
                   h(EditableField, { label: "日付", value: a.date, type: "date", onSave: function(v) { saveAct(a, "date", v); } }),
                   h(InfoRow, { label: "訪問分類", value: a.appoType || "―" }),
-                  h("div", null,
-                    h(EditableSelect, { label: "結果", value: a.visitResult, options: VISIT_RESULTS, onSave: function(v) { saveAct(a, "visitResult", v); } }),
-                    h("button", { className: "btn btn-ghost btn-sm", style: { color: "#ef4444", padding: "0 4px", fontSize: 10, marginTop: 2 }, onClick: function() { deleteActivity(a.id); } }, "削除")
-                  ),
+                  h(EditableSelect, { label: "結果", value: a.visitResult, options: VISIT_RESULTS, onSave: function(v) { saveAct(a, "visitResult", v); } }),
                   h(EditableField, { label: "内容", value: a.content, onSave: function(v) { saveAct(a, "content", v); } }),
                   agents.length > 0 ? h(EditableSelect, { label: "訪問者", value: a.visitor, options: agentOpts, onSave: function(v) { saveAct(a, "visitor", v); } }) : h(EditableField, { label: "訪問者", value: a.visitor, onSave: function(v) { saveAct(a, "visitor", v); } }),
                   agents.length > 0 ? h(EditableSelect, { label: "アポ", value: a.appointer, options: agentOpts, onSave: function(v) { saveAct(a, "appointer", v); } }) : h(EditableField, { label: "アポ", value: a.appointer, onSave: function(v) { saveAct(a, "appointer", v); } }),
-                  agents.length > 0 ? h(EditableSelect, { label: "リサーチ", value: a.researcher, options: agentOpts, onSave: function(v) { saveAct(a, "researcher", v); } }) : h(EditableField, { label: "リサーチ", value: a.researcher, onSave: function(v) { saveAct(a, "researcher", v); } })
+                  agents.length > 0 ? h(EditableSelect, { label: "リサーチ", value: a.researcher, options: agentOpts, onSave: function(v) { saveAct(a, "researcher", v); } }) : h(EditableField, { label: "リサーチ", value: a.researcher, onSave: function(v) { saveAct(a, "researcher", v); } }),
+                  h("div", { style: { display: "flex", alignItems: "end", height: "100%" } },
+                    h("button", { className: "btn btn-ghost btn-sm", style: { color: "#ef4444", padding: "0 4px", fontSize: 10 }, onClick: function() { deleteActivity(a.id); } }, "削除")
+                  )
                 );
               }
             });
@@ -549,7 +557,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
       h("button", { className: "btn btn-success btn-sm", onClick: function() { setShowCsv(true); } }, "CSV入力"),
       h("button", { className: "btn btn-secondary btn-sm", onClick: function() { API.exportCSV(); } }, "CSV出力"),
       h("button", { className: "btn btn-primary btn-sm", onClick: function() {
-        setEditData({ name: "", nameKana: "", corpType: "", zip: "", prefecture: "", city: "", address: "", url: "", email: "", representative: "", status: "見込み", industry: "", industryDetail: "", listCreatedDate: "", nextCallDate: "", nextCallTime: "", nextCallMemo: "", nextCallAgent: "", prospectOwner: "", memo: "" });
+        setEditData({ name: "", nameKana: "", corpType: "", zip: "", prefecture: "", city: "", address: "", url: "", email: "", representative: "", status: "見込み", industry: "", industryDetail: "", listCreatedDate: "", nextCallDate: "", nextCallTime: "", nextCallMemo: "", nextCallAgent: "", prospectOwner: "", hasWeb: "", memo: "" });
         setView("newCompany");
       } }, "+ 新規企業"),
       h("button", { className: "btn btn-ghost btn-sm", onClick: function() { setView(view === "list" ? "detail" : "list"); } }, view === "list" ? "詳細" : "一覧")

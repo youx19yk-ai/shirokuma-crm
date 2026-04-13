@@ -264,14 +264,14 @@ function EditableUrl({ urlData, onSave, onDelete, canDelete }) {
     );
   }
   var href = urlData.url && (urlData.url.startsWith("http") ? urlData.url : "https://" + urlData.url);
-  return h("div", { className: "phone-row", style: { cursor: "pointer" }, onClick: function() { setEditing(true); } },
-    h("span", { style: { color: "#e2e8f0", fontSize: 11, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, urlData.url || "―"),
-    h("span", { style: { color: "#94a3b8", fontSize: 10, minWidth: 55 } }, urlData.type || "―"),
-    urlData.url && h("a", { href: href, target: "_blank", rel: "noreferrer",
-      style: { color: "#fff", background: "#3b82f6", borderRadius: 4, padding: "1px 6px", fontSize: 10, textDecoration: "none", whiteSpace: "nowrap" },
+  return h("div", { className: "phone-row", style: { cursor: "pointer", display: "grid", gridTemplateColumns: "1fr 55px 45px auto", gap: 4, alignItems: "center" }, onClick: function() { setEditing(true); } },
+    h("span", { style: { color: "#e2e8f0", fontSize: 11, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" } }, urlData.url || "―"),
+    h("span", { style: { color: "#94a3b8", fontSize: 10 } }, urlData.type || "―"),
+    urlData.url ? h("a", { href: href, target: "_blank", rel: "noreferrer",
+      style: { color: "#fff", background: "#3b82f6", borderRadius: 4, padding: "1px 6px", fontSize: 10, textDecoration: "none", whiteSpace: "nowrap", textAlign: "center" },
       onClick: function(e) { e.stopPropagation(); }
-    }, "アクセス"),
-    canDelete && h("button", { className: "btn btn-ghost btn-sm", style: { color: "#ef4444", padding: "0 4px", fontSize: 10 }, onClick: function(e) { e.stopPropagation(); onDelete(); } }, "削除")
+    }, "アクセス") : h("span"),
+    canDelete ? h("button", { className: "btn btn-ghost btn-sm", style: { color: "#ef4444", padding: "0 4px", fontSize: 10 }, onClick: function(e) { e.stopPropagation(); onDelete(); } }, "削除") : h("span")
   );
 }
 
