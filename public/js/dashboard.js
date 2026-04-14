@@ -607,9 +607,12 @@ function DashboardPage(_props) {
   // ============================================================
   // メインレンダー
   // ============================================================
-  if (dashTab === "performance") return h("div", { className: "dash-container" }, renderPerformance());
-  if (dashTab === "tasks") return h("div", { className: "dash-container" }, renderTasks());
-  if (dashTab === "schedule") return h("div", { className: "dash-container" }, renderSchedule());
-  if (dashTab === "production") return h("div", { className: "dash-container" }, renderProduction());
-  return h("div", { className: "dash-container" }, renderPerformance());
+  var hide = { display: "none" };
+  var show = {};
+  return h("div", { className: "dash-container" },
+    h("div", { style: dashTab === "performance" ? show : hide }, renderPerformance()),
+    h("div", { style: dashTab === "tasks" ? show : hide }, renderTasks()),
+    h("div", { style: dashTab === "schedule" ? show : hide }, renderSchedule()),
+    h("div", { style: dashTab === "production" ? show : hide }, renderProduction())
+  );
 }
