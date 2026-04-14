@@ -277,8 +277,9 @@ function DashboardPage(_props) {
       h("div", { style: { flex: 1 } }),
       h("select", { className: "dash-sel", value: filterTeam, onChange: function(e) { setFilterTeam(e.target.value); setFilterAgent(""); } },
         h("option", { value: "" }, "全体"),
-        h("option", { value: "1課" }, "1課"),
-        h("option", { value: "2課" }, "2課")
+        agents.reduce(function(acc, a) { var t = a.section || a.team; if (t && acc.indexOf(t) < 0) acc.push(t); return acc; }, []).map(function(t) {
+          return h("option", { key: t, value: t }, t);
+        })
       ),
       h("select", { className: "dash-sel", value: filterAgent, onChange: function(e) { setFilterAgent(e.target.value); } },
         h("option", { value: "" }, "全員"),

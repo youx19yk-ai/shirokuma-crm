@@ -44,11 +44,8 @@ function DealsPage({ agents, plans, creditCompanies, onNavigate, selectOptions }
     API.deleteDeal(id).then(function() { loadDeals(); });
   };
 
-  // 個人レポート
-  var showReport = function() {
-    if (!reportAgent) return;
-    API.getAgentReport(reportAgent, reportFrom, reportTo).then(function(data) { setReport(data); });
-  };
+  // 個人レポート（KPI画面に統合済み）
+  var showReport = function() {};
 
   // 集計
   var contracted = deals.filter(function(d) { return d.status !== "商談中"; });

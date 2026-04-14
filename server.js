@@ -831,7 +831,7 @@ app.get('/api/dashboard/kpi', async (req, res) => {
     const agentsRes = await pool.query('SELECT * FROM agents');
     const allAgents = agentsRes.rows;
     let agentNames = allAgents.map(a => a.name);
-    if (team) agentNames = allAgents.filter(a => a.team === team).map(a => a.name);
+    if (team) agentNames = allAgents.filter(a => a.team === team || a.section === team).map(a => a.name);
     if (agent) agentNames = [agent];
 
     // 全活動取得

@@ -170,15 +170,16 @@ function MemoEditor({ value, onSave }) {
 }
 
 // ---- クリック編集フィールド ----
-function EditableField({ label, value, onSave, type, link, highlight, multi }) {
+function EditableField({ label, value, onSave, type, link, highlight, multi, className }) {
   var _e = useState(false), editing = _e[0], setEditing = _e[1];
   var _d = useState(value || ""), draft = _d[0], setDraft = _d[1];
   var inputRef = useRef(null);
   useEffect(function() { setDraft(value || ""); }, [value]);
   useEffect(function() { if (editing && inputRef.current) inputRef.current.focus(); }, [editing]);
+  var wrapCls = (multi ? "field-box" : "field-box field-inline") + (className ? " " + className : "");
 
   if (editing) {
-    return h("div", { className: multi ? "field-box" : "field-box field-inline" },
+    return h("div", { className: wrapCls },
       label && h(multi ? "div" : "span", { className: multi ? "info-label" : "info-label-inline" }, label),
       multi
         ? h("textarea", { ref: inputRef, className: "form-input", value: draft, rows: 3,
@@ -195,7 +196,7 @@ function EditableField({ label, value, onSave, type, link, highlight, multi }) {
           })
     );
   }
-  return h("div", { className: multi ? "field-box" : "field-box field-inline", style: { cursor: "pointer", minHeight: multi ? 50 : undefined }, onClick: function() { setEditing(true); } },
+  return h("div", { className: wrapCls, style: { cursor: "pointer", minHeight: multi ? 50 : undefined }, onClick: function() { setEditing(true); } },
     label && h(multi ? "div" : "span", { className: multi ? "info-label" : "info-label-inline" }, label),
     (link && value)
       ? h("a", { href: value.startsWith("http") ? value : "https://" + value, target: "_blank", rel: "noreferrer", className: "info-value", onClick: function(e) { e.stopPropagation(); } }, value)
