@@ -953,19 +953,19 @@ app.get('/api/calendar/:year/:month', async (req, res) => {
 
     // 訪問予定（アポ活動）
     const visitsRes = await pool.query(
-      "SELECT a.id, a.date, a.agent, a.visitor, a.visit_result, a.time, c.name as company_name FROM activities a JOIN companies c ON a.company_id = c.id WHERE a.type='アポ' AND a.date LIKE $1 ORDER BY a.date",
+      "SELECT a.id, a.company_id, a.date, a.agent, a.visitor, a.visit_result, a.time, c.name as company_name FROM activities a JOIN companies c ON a.company_id = c.id WHERE a.type='アポ' AND a.date LIKE $1 ORDER BY a.date",
       [monthStr + '%']
     );
     const visits = visitsRes.rows.map(r => ({
-      id: r.id, companyName: r.company_name, date: r.date, agent: r.agent || r.visitor || '', time: r.time, visitResult: r.visit_result
+      id: r.id, companyId: r.company_id, companyName: r.company_name, date: r.date, agent: r.agent || r.visitor || '', time: r.time, visitResult: r.visit_result
     }));
 
     // 案件（契約・取材・納品の日程）
     const dealsRes = await pool.query(
-      "SELECT d.id, d.title, d.status, d.agent, d.contract_date, d.interview_date, d.delivery_date, c.name as company_name FROM deals d JOIN companies c ON d.company_id = c.id WHERE d.status != '商談中'"
+      "SELECT d.id, d.company_id, d.title, d.status, d.agent, d.contract_date, d.interview_date, d.delivery_date, c.name as company_name FROM deals d JOIN companies c ON d.company_id = c.id WHERE d.status != '商談中'"
     );
     const deals = dealsRes.rows.map(r => ({
-      id: r.id, title: r.title, companyName: r.company_name, status: r.status, agent: r.agent || '',
+      id: r.id, companyId: r.company_id, title: r.title, companyName: r.company_name, status: r.status, agent: r.agent || '',
       contractDate: r.contract_date, interviewDate: r.interview_date, deliveryDate: r.delivery_date
     }));
 

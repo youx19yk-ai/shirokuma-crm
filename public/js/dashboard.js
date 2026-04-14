@@ -25,6 +25,7 @@ function DashboardPage(_props) {
   var _calM = useState(new Date().getMonth() + 1), calMonth = _calM[0], setCalMonth = _calM[1];
   var _calData = useState(null), calData = _calData[0], setCalData = _calData[1];
   var _calAgent = useState(""), calAgent = _calAgent[0], setCalAgent = _calAgent[1];
+  var _calView = useState("all"), calView = _calView[0], setCalView = _calView[1]; // all/sales/production
 
   // --- 制作管理 State ---
   var _deals = useState([]), deals = _deals[0], setDeals = _deals[1];
@@ -376,32 +377,38 @@ function DashboardPage(_props) {
     var todayKey = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
 
     // イベント集約
+    // 営業系: call, visit, contract  制作系: interview, delivery
+    var salesTypes = { call: 1, visit: 1, contract: 1 };
+    var prodTypes = { interview: 1, delivery: 1 };
     var events = {};
+    function addEv(date, ev) {
+      // 表示フィルタ
+      if (calView === "sales" && prodTypes[ev.type]) return;
+      if (calView === "production" && salesTypes[ev.type]) return;
+      if (!events[date]) events[date] = [];
+      events[date].push(ev);
+    }
     if (calData) {
       (calData.calls || []).forEach(function(c) {
         if (calAgent && c.agent !== calAgent) return;
-        if (!events[c.date]) events[c.date] = [];
-        events[c.date].push({ type: "call", label: "コール " + (c.companyName || c.name || "") });
+        addEv(c.date, { type: "call", label: "コール " + (c.companyName || ""), cid: c.id });
       });
       (calData.visits || []).forEach(function(v) {
         if (calAgent && v.agent !== calAgent) return;
-        if (!events[v.date]) events[v.date] = [];
-        events[v.date].push({ type: "visit", label: "訪問 " + (v.companyName || v.name || "") });
+        addEv(v.date, { type: "visit", label: "訪問 " + (v.companyName || ""), cid: v.companyId });
       });
       var mp = calYear + '-' + String(calMonth).padStart(2,'0');
       (calData.deals || []).forEach(function(dl) {
         if (calAgent && dl.agent !== calAgent) return;
+        var cid = dl.companyId;
+        if (dl.contractDate && dl.contractDate.indexOf(mp) === 0) {
+          addEv(dl.contractDate, { type: "contract", label: "契約 " + (dl.companyName || dl.title || ""), cid: cid });
+        }
         if (dl.interviewDate && dl.interviewDate.indexOf(mp) === 0) {
-          if (!events[dl.interviewDate]) events[dl.interviewDate] = [];
-          events[dl.interviewDate].push({ type: "interview", label: "取材 " + (dl.companyName || dl.title || "") });
+          addEv(dl.interviewDate, { type: "interview", label: "取材 " + (dl.companyName || dl.title || ""), cid: cid });
         }
         if (dl.deliveryDate && dl.deliveryDate.indexOf(mp) === 0) {
-          if (!events[dl.deliveryDate]) events[dl.deliveryDate] = [];
-          events[dl.deliveryDate].push({ type: "delivery", label: "納品 " + (dl.companyName || dl.title || "") });
-        }
-        if (dl.contractDate && dl.contractDate.indexOf(mp) === 0) {
-          if (!events[dl.contractDate]) events[dl.contractDate] = [];
-          events[dl.contractDate].push({ type: "contract", label: "契約 " + (dl.companyName || dl.title || "") });
+          addEv(dl.deliveryDate, { type: "delivery", label: "納品 " + (dl.companyName || dl.title || ""), cid: cid });
         }
       });
     }
@@ -455,6 +462,13 @@ function DashboardPage(_props) {
         h("span", { className: "period-label" }, calYear + "年" + calMonth + "月"),
         h("button", { className: "dash-nav-btn", onClick: function() { if (calMonth === 12) { setCalYear(calYear + 1); setCalMonth(1); } else { setCalMonth(calMonth + 1); } } }, "\u003E"),
         h("button", { className: "dash-nav-btn", style: { marginLeft: 8 }, onClick: function() { var n = new Date(); setCalYear(n.getFullYear()); setCalMonth(n.getMonth() + 1); } }, "今月"),
+        h("div", { className: "period-btns", style: { marginLeft: 16 } },
+          [["all","全体"],["sales","営業"],["production","制作"]].map(function(v) {
+            return h("button", { key: v[0], className: "period-btn" + (calView === v[0] ? " active" : ""),
+              onClick: function() { setCalView(v[0]); }
+            }, v[1]);
+          })
+        ),
         h("div", { style: { flex: 1 } }),
         h("select", { className: "dash-sel", value: calAgent, onChange: function(e) { setCalAgent(e.target.value); } },
           h("option", { value: "" }, "全員"),
@@ -478,7 +492,10 @@ function DashboardPage(_props) {
           return h("div", { key: idx, className: cls },
             h("div", { className: "cal-dn" }, c.day),
             (c.events || []).slice(0, 3).map(function(ev, j2) {
-              return h("div", { key: j2, className: "cal-ev " + ev.type }, ev.label);
+              return h("div", { key: j2, className: "cal-ev " + ev.type,
+                style: ev.cid ? { cursor: "pointer" } : {},
+                onClick: ev.cid ? function() { onNavigate("companies", ev.cid); } : undefined
+              }, ev.label);
             }),
             (c.events || []).length > 3 ? h("div", { style: { fontSize: 9, color: "#64748b" } }, "+" + ((c.events || []).length - 3) + "件") : null
           );
