@@ -274,7 +274,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
             h(EditableSelect, { label: "見込み分類", value: sel.status, options: getOpts(so, "STATUS_OPTIONS", STATUS_OPTIONS), onSave: function(v) { saveCompany(Object.assign({}, sel, { status: v })); } }),
             h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 4 } },
               h(EditableSelect, { label: "業種", value: sel.industry, options: getOpts(so, "INDUSTRY_OPTIONS", INDUSTRY_OPTIONS), onSave: function(v) { saveCompany(Object.assign({}, sel, { industry: v })); } }),
-              h(EditableField, { label: "小分類", value: sel.industryDetail, onSave: function(v) { saveCompany(Object.assign({}, sel, { industryDetail: v })); } })
+              h(EditableSelect, { label: "小分類", value: sel.industryDetail, options: getLinkedOpts(so, sel.industry, [], "INDUSTRY_SUB"), onSave: function(v) { saveCompany(Object.assign({}, sel, { industryDetail: v })); } })
             ),
             h("div", { style: { marginTop: 4 } },
               h(EditableField, { label: "代表者名", value: sel.representative, onSave: function(v) { saveCompany(Object.assign({}, sel, { representative: v })); } })

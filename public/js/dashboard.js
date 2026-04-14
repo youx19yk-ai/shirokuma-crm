@@ -215,7 +215,6 @@ function DashboardPage(_props) {
     addRow("ct_uketsuke", "受付通話率", function(c) { return (c.d.callTypeRates || {})["受付通話"] || 0; }, "pct", "v");
     addRow("ct_futsu", "不通率", function(c) { return (c.d.callTypeRates || {})["不通"] || 0; }, "pct", "v");
     addRow("ct_teian", "提案完了率", function(c) { return (c.d.callTypeRates || {})["提案完了"] || 0; }, "pct", "v");
-    addRow("ct_callonly", "コールのみ率", function(c) { return (c.d.callTypeRates || {})["コールのみ"] || 0; }, "pct", "v");
 
     function fmtV(val, fmt) {
       if (fmt === "money") return fmtMoney(val);
@@ -299,7 +298,19 @@ function DashboardPage(_props) {
     var todayLabel = today.getFullYear() + "年" + (today.getMonth()+1) + "月" + today.getDate() + "日（" + dn[today.getDay()] + "）";
     var todayTasks = (stats.todayTasks || []).filter(function(t) { return !taskAgent || t.agent === taskAgent; });
     var overdueTasks = (stats.overdue || []).filter(function(t) { return !taskAgent || t.agent === taskAgent; });
+    var todayVisits = (stats.todayVisits || []).filter(function(t) { return !taskAgent || t.agent === taskAgent; });
+    var todayInterviews = (stats.todayInterviews || []).filter(function(t) { return !taskAgent || t.agent === taskAgent; });
+    var todayDeliveries = (stats.todayDeliveries || []).filter(function(t) { return !taskAgent || t.agent === taskAgent; });
     var byOwner = stats.byProspectOwner || {};
+
+    // 行で使うテーブル行ヘルパー
+    function taskRow(t, extra) {
+      return h("tr", { key: t.id + (extra || ""), onClick: function() { onNavigate("companies", t.id); } },
+        h("td", { style: { fontWeight: 600 } }, t.name),
+        t.agent ? h("td", null, h("span", { className: "badge badge-blue" }, t.agent)) : h("td"),
+        h("td", { style: { color: "#94a3b8" } }, t.memo || t.title || "")
+      );
+    }
 
     return h("div", null,
       h("div", { className: "dash-filter-bar" },
@@ -310,25 +321,57 @@ function DashboardPage(_props) {
           agents.map(function(a) { return h("option", { key: a.id, value: a.name }, a.name); })
         )
       ),
+      // 上段: コール予定 + 行動予定
       h("div", { className: "dashboard-grid" },
         h("div", { className: "card", style: { padding: 14 } },
           h("div", { className: "dash-card-title", style: { color: "#7c8cf8" } }, "今日のコール予定（" + todayTasks.length + "件）"),
           todayTasks.length === 0
-            ? h("div", { className: "text-muted text-sm", style: { padding: 12 } }, "今日の予定はありません")
+            ? h("div", { className: "text-muted text-sm", style: { padding: 12 } }, "予定なし")
+            : h("table", { className: "dash-task-table" }, h("tbody", null, todayTasks.map(function(t) { return taskRow(t); })))
+        ),
+        h("div", { className: "card", style: { padding: 14 } },
+          h("div", { className: "dash-card-title", style: { color: "#f97316" } }, "今日の行動予定（" + todayVisits.length + "件）"),
+          todayVisits.length === 0
+            ? h("div", { className: "text-muted text-sm", style: { padding: 12 } }, "予定なし")
+            : h("table", { className: "dash-task-table" }, h("tbody", null, todayVisits.map(function(t) {
+                return h("tr", { key: t.id + "v", onClick: function() { onNavigate("companies", t.id); } },
+                  h("td", { style: { fontWeight: 600 } }, t.name),
+                  t.agent ? h("td", null, h("span", { className: "badge badge-blue" }, t.agent)) : h("td"),
+                  h("td", { style: { color: "#94a3b8" } }, t.time || "")
+                );
+              })))
+        )
+      ),
+      // 中段: 取材・納品 + 期限切れ
+      h("div", { className: "dashboard-grid", style: { marginTop: 4 } },
+        h("div", { className: "card", style: { padding: 14 } },
+          h("div", { className: "dash-card-title" },
+            h("span", { style: { color: "#a855f7" } }, "取材（" + todayInterviews.length + "件）"),
+            "　",
+            h("span", { style: { color: "#22c55e" } }, "納品（" + todayDeliveries.length + "件）")
+          ),
+          (todayInterviews.length + todayDeliveries.length) === 0
+            ? h("div", { className: "text-muted text-sm", style: { padding: 12 } }, "予定なし")
             : h("table", { className: "dash-task-table" }, h("tbody", null,
-                todayTasks.map(function(t) {
-                  return h("tr", { key: t.id, onClick: function() { onNavigate("companies", t.id); } },
+                todayInterviews.map(function(t) {
+                  return h("tr", { key: t.id + "i", onClick: function() { onNavigate("companies", t.id); } },
+                    h("td", null, h("span", { className: "cal-ev interview", style: { display: "inline", padding: "1px 6px" } }, "取材")),
                     h("td", { style: { fontWeight: 600 } }, t.name),
-                    t.agent ? h("td", null, h("span", { className: "badge badge-blue" }, t.agent)) : h("td"),
-                    h("td", { style: { color: "#94a3b8" } }, t.memo || "")
+                    t.agent ? h("td", null, h("span", { className: "badge badge-blue" }, t.agent)) : h("td")
                   );
-                })
+                }).concat(todayDeliveries.map(function(t) {
+                  return h("tr", { key: t.id + "d", onClick: function() { onNavigate("companies", t.id); } },
+                    h("td", null, h("span", { className: "cal-ev delivery", style: { display: "inline", padding: "1px 6px" } }, "納品")),
+                    h("td", { style: { fontWeight: 600 } }, t.name),
+                    t.agent ? h("td", null, h("span", { className: "badge badge-blue" }, t.agent)) : h("td")
+                  );
+                }))
               ))
         ),
         h("div", { className: "card", style: { padding: 14 } },
           h("div", { className: "dash-card-title", style: { color: "#ef4444" } }, "期限切れ（" + overdueTasks.length + "件）"),
           overdueTasks.length === 0
-            ? h("div", { className: "text-muted text-sm", style: { padding: 12 } }, "期限切れはありません")
+            ? h("div", { className: "text-muted text-sm", style: { padding: 12 } }, "なし")
             : h("table", { className: "dash-task-table" }, h("tbody", null,
                 overdueTasks.map(function(t) {
                   return h("tr", { key: t.id, onClick: function() { onNavigate("companies", t.id); } },
@@ -340,6 +383,7 @@ function DashboardPage(_props) {
               ))
         )
       ),
+      // 下段: 保有数 + コール推移
       h("div", { className: "dashboard-grid", style: { marginTop: 4 } },
         h("div", { className: "card", style: { padding: 14 } },
           h("div", { className: "dash-card-title" }, "見込み者別 保有数"),
@@ -353,13 +397,23 @@ function DashboardPage(_props) {
         ),
         h("div", { className: "card", style: { padding: 14 } },
           h("div", { className: "dash-card-title" }, "直近30日 コール推移"),
-          h("div", { className: "dash-graph-bar" },
-            dailyCalls.length > 0 ? dailyCalls.map(function(d, i) {
-              var max = Math.max.apply(null, dailyCalls.map(function(x) { return parseInt(x.count) || 0; }));
-              var pct = max > 0 ? (parseInt(d.count) / max * 100) : 0;
-              return h("div", { key: i, className: "dash-graph-col", title: d.date + ": " + d.count + "件", style: { height: Math.max(pct, 4) + "%" } });
-            }) : h("div", { className: "text-muted text-sm" }, "データなし")
-          )
+          dailyCalls.length > 0 ? h("div", null,
+            h("div", { className: "dash-graph-bar" },
+              dailyCalls.map(function(d, i) {
+                var max = Math.max.apply(null, dailyCalls.map(function(x) { return parseInt(x.count) || 0; }));
+                var pct = max > 0 ? (parseInt(d.count) / max * 100) : 0;
+                var cnt = parseInt(d.count) || 0;
+                return h("div", { key: i, style: { flex: 1, display: "flex", flexDirection: "column", alignItems: "center", minWidth: 3 } },
+                  h("div", { style: { fontSize: 8, color: "#94a3b8", marginBottom: 1 } }, cnt > 0 ? cnt : ""),
+                  h("div", { className: "dash-graph-col", title: d.date + ": " + d.count + "件", style: { height: Math.max(pct, 4) + "%", width: "100%" } })
+                );
+              })
+            ),
+            h("div", { style: { display: "flex", justifyContent: "space-between", fontSize: 9, color: "#64748b", marginTop: 2 } },
+              h("span", null, dailyCalls.length > 0 ? dailyCalls[0].date.slice(5) : ""),
+              h("span", null, dailyCalls.length > 0 ? dailyCalls[dailyCalls.length - 1].date.slice(5) : "")
+            )
+          ) : h("div", { className: "text-muted text-sm" }, "データなし")
         )
       )
     );

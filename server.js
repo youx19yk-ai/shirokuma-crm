@@ -733,6 +733,21 @@ app.get('/api/dashboard/stats', async (req, res) => {
       [todayStr]
     );
 
+    // 今日の訪問予定
+    const todayVisits = await pool.query(
+      "SELECT a.id, a.company_id, a.date, a.time, a.agent, c.name as company_name FROM activities a JOIN companies c ON a.company_id = c.id WHERE a.type='アポ' AND a.date = $1 ORDER BY a.time",
+      [todayStr]
+    );
+    // 今日の取材・納品予定
+    const todayInterviews = await pool.query(
+      "SELECT d.id, d.company_id, d.title, d.agent, d.interview_date, c.name as company_name FROM deals d JOIN companies c ON d.company_id = c.id WHERE d.interview_date = $1",
+      [todayStr]
+    );
+    const todayDeliveries = await pool.query(
+      "SELECT d.id, d.company_id, d.title, d.agent, d.delivery_date, c.name as company_name FROM deals d JOIN companies c ON d.company_id = c.id WHERE d.delivery_date = $1",
+      [todayStr]
+    );
+
     res.json({
       totalCompanies: parseInt(total.rows[0].count),
       byStatus: byStatus.rows.reduce((acc, r) => { acc[r.status] = parseInt(r.count); return acc; }, {}),
@@ -741,6 +756,9 @@ app.get('/api/dashboard/stats', async (req, res) => {
       monthDeals: parseInt(monthDeals.rows[0].count),
       todayTasks: todayTasks.rows.map(r => ({ id: r.id, name: r.name, date: r.next_call_date, memo: r.next_call_memo, time: r.next_call_time, agent: r.next_call_agent })),
       overdue: overdue.rows.map(r => ({ id: r.id, name: r.name, date: r.next_call_date, memo: r.next_call_memo, time: r.next_call_time, agent: r.next_call_agent })),
+      todayVisits: todayVisits.rows.map(r => ({ id: r.company_id, name: r.company_name, time: r.time, agent: r.agent })),
+      todayInterviews: todayInterviews.rows.map(r => ({ id: r.company_id, name: r.company_name, title: r.title, agent: r.agent })),
+      todayDeliveries: todayDeliveries.rows.map(r => ({ id: r.company_id, name: r.company_name, title: r.title, agent: r.agent })),
       byProspectOwner: (await pool.query("SELECT prospect_owner, COUNT(*) FROM companies WHERE prospect_owner != '' GROUP BY prospect_owner ORDER BY count DESC")).rows.reduce((acc, r) => { acc[r.prospect_owner] = parseInt(r.count); return acc; }, {})
     });
   } catch (e) {

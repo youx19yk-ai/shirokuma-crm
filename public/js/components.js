@@ -36,9 +36,10 @@ function getOpts(selOpts, category, fallback) {
   var items = selOpts.filter(function(o) { return o.category === category && !o.parent; });
   return items.length > 0 ? items.map(function(o) { return o.value; }) : (fallback || []);
 }
-function getLinkedOpts(selOpts, callType, fallback) {
+function getLinkedOpts(selOpts, parentVal, fallback, category) {
   if (!selOpts || selOpts.length === 0) return fallback || [];
-  var items = selOpts.filter(function(o) { return o.category === 'CALL_TYPE_RESULTS' && o.parent === callType; });
+  var cat = category || 'CALL_TYPE_RESULTS';
+  var items = selOpts.filter(function(o) { return o.category === cat && o.parent === parentVal; });
   return items.length > 0 ? items.map(function(o) { return o.value; }) : (fallback || []);
 }
 

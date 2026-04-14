@@ -10,12 +10,14 @@ function MasterPage({ plans, agents, creditCompanies, onReload }) {
   var _selNew = useState(""), selNew = _selNew[0], setSelNew = _selNew[1];
   var _selNewResult = useState(""), selNewResult = _selNewResult[0], setSelNewResult = _selNewResult[1];
   var _selCallType = useState(""), selCallType = _selCallType[0], setSelCallType = _selCallType[1]; // 紐づき編集用
+  var _selIndParent = useState(""), selIndParent = _selIndParent[0], setSelIndParent = _selIndParent[1];
+  var _selNewSub = useState(""), selNewSub = _selNewSub[0], setSelNewSub = _selNewSub[1];
   var SEL_CATEGORIES = [
     { key: "CALL_LINK", label: "通話分類・結果" },
     { key: "VISIT_RESULTS", label: "訪問結果" },
     { key: "STATUS_OPTIONS", label: "見込み分類" },
     { key: "DEAL_STATUSES", label: "案件ステータス" },
-    { key: "INDUSTRY_OPTIONS", label: "業種" },
+    { key: "INDUSTRY_LINK", label: "業種・小分類" },
     { key: "PAYMENT_METHODS", label: "決済方法" }
   ];
   function loadSelOpts() {
@@ -28,6 +30,9 @@ function MasterPage({ plans, agents, creditCompanies, onReload }) {
   }
   function getLinkedResults(callType) {
     return selOpts.filter(function(o) { return o.category === 'CALL_TYPE_RESULTS' && o.parent === callType; });
+  }
+  function getSubIndustries(industry) {
+    return selOpts.filter(function(o) { return o.category === 'INDUSTRY_SUB' && o.parent === industry; });
   }
   function addSelOpt(cat, val, parent) {
     if (!val || !val.trim()) return;
@@ -346,8 +351,53 @@ function MasterPage({ plans, agents, creditCompanies, onReload }) {
           );
         })(),
 
+        // === 業種・小分類（紐づき編集） ===
+        selCat === "INDUSTRY_LINK" && (function() {
+          var industries = getItems("INDUSTRY_OPTIONS");
+          return h("div", null,
+            h("div", { style: { fontWeight: 600, fontSize: 13, marginBottom: 8, color: "#7c8cf8" } }, "業種"),
+            h("div", { className: "flex gap-8 mb-8" },
+              h("input", { className: "form-input", style: { maxWidth: 200 }, value: selNew, placeholder: "新しい業種",
+                onChange: function(e) { setSelNew(e.target.value); },
+                onKeyDown: function(e) { if (e.key === "Enter") { addSelOpt("INDUSTRY_OPTIONS", selNew); setSelNew(""); } }
+              }),
+              h("button", { className: "btn btn-primary btn-sm", onClick: function() { addSelOpt("INDUSTRY_OPTIONS", selNew); setSelNew(""); } }, "追加")
+            ),
+            industries.map(function(ind) {
+              var isActive = selIndParent === ind.value;
+              return h("div", { key: ind.id, className: "master-item", style: { borderLeft: isActive ? "3px solid #7c8cf8" : "3px solid transparent", cursor: "pointer" },
+                onClick: function() { setSelIndParent(isActive ? "" : ind.value); }
+              },
+                h("span", { style: { fontWeight: 600, flex: 1 } }, ind.value),
+                h("span", { className: "text-xs text-muted", style: { marginRight: 8 } }, getSubIndustries(ind.value).length + "件の小分類"),
+                h("button", { className: "btn-icon btn-sm", style: { color: "#ef4444" },
+                  onClick: function(e) { e.stopPropagation(); delSelOpt(ind.id); }
+                }, "削除")
+              );
+            }),
+            selIndParent && h("div", { style: { marginTop: 8, padding: 14, background: "#252836", borderRadius: 8, border: "1px solid #3d4163" } },
+              h("div", { style: { fontWeight: 600, fontSize: 13, marginBottom: 8, color: "#f97316" } }, selIndParent + " の小分類"),
+              h("div", { className: "flex gap-8 mb-8" },
+                h("input", { className: "form-input", style: { maxWidth: 200 }, value: selNewSub, placeholder: "新しい小分類",
+                  onChange: function(e) { setSelNewSub(e.target.value); },
+                  onKeyDown: function(e) { if (e.key === "Enter") { addSelOpt("INDUSTRY_SUB", selNewSub, selIndParent); setSelNewSub(""); } }
+                }),
+                h("button", { className: "btn btn-primary btn-sm", onClick: function() { addSelOpt("INDUSTRY_SUB", selNewSub, selIndParent); setSelNewSub(""); } }, "追加")
+              ),
+              getSubIndustries(selIndParent).length === 0
+                ? h("div", { className: "text-muted text-sm" }, "小分類が未登録です")
+                : getSubIndustries(selIndParent).map(function(s) {
+                    return h("div", { key: s.id, className: "master-item" },
+                      h("span", { style: { fontWeight: 600 } }, s.value),
+                      h("button", { className: "btn-icon btn-sm", style: { color: "#ef4444" }, onClick: function() { delSelOpt(s.id); } }, "削除")
+                    );
+                  })
+            )
+          );
+        })(),
+
         // === 通常カテゴリ（一覧+追加+削除） ===
-        selCat !== "CALL_LINK" && (function() {
+        selCat !== "CALL_LINK" && selCat !== "INDUSTRY_LINK" && (function() {
           var items = getItems(selCat);
           return h("div", null,
             h("div", { className: "flex gap-8 mb-12" },
@@ -358,7 +408,7 @@ function MasterPage({ plans, agents, creditCompanies, onReload }) {
               h("button", { className: "btn btn-primary btn-sm", onClick: function() { addSelOpt(selCat, selNew); setSelNew(""); } }, "追加")
             ),
             items.length === 0
-              ? h("div", { className: "text-muted text-sm", style: { padding: 12 } }, "項目がありません。上から追加するか、デフォルトを投入してください。")
+              ? h("div", { className: "text-muted text-sm", style: { padding: 12 } }, "項目がありません。")
               : items.map(function(item) {
                   return h("div", { key: item.id, className: "master-item" },
                     h("span", { style: { fontWeight: 600 } }, item.value),
