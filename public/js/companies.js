@@ -278,10 +278,10 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
                 }
               }, "検索")
             ),
-            // 法人格+フリガナ（1行）
-            h("div", { style: { display: "flex", gap: 6, marginBottom: 4 } },
-              h("div", { style: { width: 100 } }, h(EditableSelect, { label: "法人格", value: sel.corpType, options: CORP_TYPES, onSave: function(v) { saveCompany(Object.assign({}, sel, { corpType: v })); } })),
-              h("div", { style: { flex: 1 } }, h(EditableField, { label: "フリガナ", value: sel.nameKana, onSave: function(v) { saveCompany(Object.assign({}, sel, { nameKana: v })); } }))
+            // 法人格+フリガナ（半分ずつ）
+            h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginBottom: 4 } },
+              h(EditableSelect, { label: "法人格", value: sel.corpType, options: CORP_TYPES, onSave: function(v) { saveCompany(Object.assign({}, sel, { corpType: v })); } }),
+              h(EditableField, { label: "フリガナ", value: sel.nameKana, onSave: function(v) { saveCompany(Object.assign({}, sel, { nameKana: v })); } })
             ),
             h("div", { style: { display: "flex", gap: 8, marginBottom: 4 } },
               h("div", { style: { width: 120 } }, h(EditableField, { label: "〒", value: sel.zip, onSave: function(v) { saveCompany(Object.assign({}, sel, { zip: toHalfWidth(v) })); } })),
@@ -294,7 +294,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
           ),
           // ---- 右カラム ----
           h("div", null,
-            h("div", { style: { background: "#3d3520", border: "1px solid #665a2e", borderRadius: 4, padding: "2px 8px" } },
+            h("div", { className: "status-yellow" },
               h(EditableSelect, { label: "見込み分類", value: sel.status, options: getOpts(so, "STATUS_OPTIONS", STATUS_OPTIONS), onSave: function(v) { saveCompany(Object.assign({}, sel, { status: v })); } })
             ),
             h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 4 } },

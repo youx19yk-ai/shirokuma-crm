@@ -254,6 +254,9 @@ function EditablePhone({ phone, onSave, onDelete, canDelete }) {
     h("span", { className: "phone-number" }, phone.number),
     h("span", { className: "phone-type" }, phone.type),
     h("span", { className: "phone-label" }, phone.label),
+    phone.number && h("a", { href: "tel:" + phone.number.replace(/[-\s]/g, ""), style: { color: "#22c55e", fontSize: 10, textDecoration: "none", padding: "0 4px", whiteSpace: "nowrap" },
+      onClick: function(e) { e.stopPropagation(); }
+    }, "発信"),
     canDelete && h("button", { className: "btn btn-ghost btn-sm", style: { color: "#ef4444", padding: "0 4px", fontSize: 10 }, onClick: function(e) { e.stopPropagation(); onDelete(); } }, "削除")
   );
 }

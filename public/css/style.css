@@ -122,6 +122,9 @@ textarea.form-input { resize: vertical; }
 .info-value { font-size: 13px; color: #cbd5e1; }
 .info-value a { color: #7c8cf8; text-decoration: none; }
 
+/* 見込み分類の文字を黄色 */
+.status-yellow .info-value { color: #fbbf24; font-weight: 700; }
+
 /* 会社名大きく */
 .company-name-big .field-box { border: none; padding: 0; }
 .company-name-big .info-value { font-size: 22px; font-weight: 700; color: #e2e8f0; }
