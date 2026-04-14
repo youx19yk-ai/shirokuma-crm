@@ -167,6 +167,19 @@ async function initDB(retries = 10, delay = 3000) {
       created_at TIMESTAMP DEFAULT NOW()
     );
 
+    CREATE TABLE IF NOT EXISTS hashtags (
+      id TEXT PRIMARY KEY,
+      tag TEXT NOT NULL UNIQUE,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS company_hashtags (
+      id TEXT PRIMARY KEY,
+      company_id TEXT NOT NULL,
+      hashtag_id TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
+
     CREATE TABLE IF NOT EXISTS select_options (
       id TEXT PRIMARY KEY,
       category TEXT NOT NULL,
@@ -289,6 +302,18 @@ async function initDB(retries = 10, delay = 3000) {
     for (let i = 0; i < agentsWithoutId.rows.length; i++) {
       const mid = 'M' + String(Date.now()).slice(-6) + String(i + 1).padStart(2, '0');
       await pool.query('UPDATE agents SET member_id=$1 WHERE id=$2', [mid, agentsWithoutId.rows[i].id]);
+    }
+  } catch(e) {}
+
+  // デフォルトハッシュタグ投入
+  try {
+    const htCount = await pool.query('SELECT COUNT(*) FROM hashtags');
+    if (parseInt(htCount.rows[0].count) === 0) {
+      const defaultTags = ['雨','折り返し来る人','女性社長','オラオラ系'];
+      const genHId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+      for (const tag of defaultTags) {
+        await pool.query('INSERT INTO hashtags (id, tag) VALUES ($1, $2) ON CONFLICT DO NOTHING', [genHId(), tag]);
+      }
     }
   } catch(e) {}
 
@@ -1186,6 +1211,58 @@ app.post('/api/select-options/seed-defaults', async (req, res) => {
       }
     }
     res.json({ ok: true, inserted: count });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ハッシュタグ API
+// ============================================================
+app.get('/api/hashtags', async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT * FROM hashtags ORDER BY tag');
+    res.json(rows.map(h => ({ id: h.id, tag: h.tag })));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/hashtags', async (req, res) => {
+  const id = genId();
+  try {
+    await pool.query('INSERT INTO hashtags (id, tag) VALUES ($1, $2) ON CONFLICT (tag) DO NOTHING', [id, req.body.tag]);
+    res.json({ id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.get('/api/companies/:id/hashtags', async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      'SELECT h.id, h.tag FROM company_hashtags ch JOIN hashtags h ON ch.hashtag_id = h.id WHERE ch.company_id = $1 ORDER BY ch.created_at',
+      [req.params.id]
+    );
+    res.json(rows);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/companies/:id/hashtags', async (req, res) => {
+  const cid = req.params.id;
+  const tag = req.body.tag;
+  try {
+    // ハッシュタグがなければ作成
+    let htRes = await pool.query('SELECT id FROM hashtags WHERE tag = $1', [tag]);
+    let htId;
+    if (htRes.rows.length === 0) {
+      htId = genId();
+      await pool.query('INSERT INTO hashtags (id, tag) VALUES ($1, $2)', [htId, tag]);
+    } else {
+      htId = htRes.rows[0].id;
+    }
+    // 紐づけ（重複防止）
+    const exists = await pool.query('SELECT id FROM company_hashtags WHERE company_id=$1 AND hashtag_id=$2', [cid, htId]);
+    if (exists.rows.length === 0) {
+      await pool.query('INSERT INTO company_hashtags (id, company_id, hashtag_id) VALUES ($1, $2, $3)', [genId(), cid, htId]);
+    }
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.delete('/api/companies/:companyId/hashtags/:hashtagId', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM company_hashtags WHERE company_id=$1 AND hashtag_id=$2', [req.params.companyId, req.params.hashtagId]);
+    res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

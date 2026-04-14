@@ -3,6 +3,20 @@
 // ============================================================
 function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plans, creditCompanies, savedFilters, onSaveFilter, selectOptions }) {
   var so = selectOptions || [];
+  // ハッシュタグ
+  var _ht = useState([]), compTags = _ht[0], setCompTags = _ht[1];
+  var _allTags = useState([]), allTags = _allTags[0], setAllTags = _allTags[1];
+  var _htInput = useState(""), htInput = _htInput[0], setHtInput = _htInput[1];
+  var _htShow = useState(false), htShowSuggest = _htShow[0], setHtShowSuggest = _htShow[1];
+  function loadHashtags(cid) {
+    if (!cid) return;
+    API.getCompanyHashtags(cid).then(function(d) { setCompTags(d); }).catch(function() { setCompTags([]); });
+  }
+  function loadAllTags() {
+    API.getHashtags().then(function(d) { setAllTags(d); }).catch(function() { setAllTags([]); });
+  }
+  useEffect(function() { loadAllTags(); }, []);
+  useEffect(function() { loadHashtags(selectedId); }, [selectedId]);
   var _v = useState("detail"), view = _v[0], setView = _v[1];
   var _ed = useState(null), editData = _ed[0], setEditData = _ed[1];
   var _undo = useState([]), undoStack = _undo[0], setUndoStack = _undo[1];
@@ -252,13 +266,22 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
                 : h(EditableField, { label: "リスト作成日", value: sel.listCreatedDate, type: "date", onSave: function(v) { saveCompany(Object.assign({}, sel, { listCreatedDate: v })); } })
               )
             ),
-            // 法人格+フリガナ（1行）+ 会社名
+            // 会社名（大きく表示）+ 検索ボタン
+            h("div", { style: { display: "flex", gap: 8, alignItems: "center", marginBottom: 6 } },
+              h("div", { style: { flex: 1 } },
+                h(EditableField, { label: "", value: sel.name, className: "company-name-big", onSave: function(v) { saveCompany(Object.assign({}, sel, { name: v })); } })
+              ),
+              h("button", { className: "btn btn-ghost btn-sm", style: { fontSize: 11, whiteSpace: "nowrap" },
+                onClick: function() {
+                  var q = sel.name + " " + (sel.prefecture || "") + " " + (sel.city || "");
+                  navigator.clipboard.writeText(q).then(function() { window.open("https://www.google.com/search?q=" + encodeURIComponent(q), "_blank"); });
+                }
+              }, "検索")
+            ),
+            // 法人格+フリガナ（1行）
             h("div", { style: { display: "flex", gap: 6, marginBottom: 4 } },
               h("div", { style: { width: 100 } }, h(EditableSelect, { label: "法人格", value: sel.corpType, options: CORP_TYPES, onSave: function(v) { saveCompany(Object.assign({}, sel, { corpType: v })); } })),
               h("div", { style: { flex: 1 } }, h(EditableField, { label: "フリガナ", value: sel.nameKana, onSave: function(v) { saveCompany(Object.assign({}, sel, { nameKana: v })); } }))
-            ),
-            h("div", { style: { marginBottom: 4 } },
-              h(EditableField, { label: "会社名", value: sel.name, onSave: function(v) { saveCompany(Object.assign({}, sel, { name: v })); } })
             ),
             h("div", { style: { display: "flex", gap: 8, marginBottom: 4 } },
               h("div", { style: { width: 120 } }, h(EditableField, { label: "〒", value: sel.zip, onSave: function(v) { saveCompany(Object.assign({}, sel, { zip: toHalfWidth(v) })); } })),
@@ -271,7 +294,9 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
           ),
           // ---- 右カラム ----
           h("div", null,
-            h(EditableSelect, { label: "見込み分類", value: sel.status, options: getOpts(so, "STATUS_OPTIONS", STATUS_OPTIONS), onSave: function(v) { saveCompany(Object.assign({}, sel, { status: v })); } }),
+            h("div", { style: { background: "#3d3520", border: "1px solid #665a2e", borderRadius: 4, padding: "2px 8px" } },
+              h(EditableSelect, { label: "見込み分類", value: sel.status, options: getOpts(so, "STATUS_OPTIONS", STATUS_OPTIONS), onSave: function(v) { saveCompany(Object.assign({}, sel, { status: v })); } })
+            ),
             h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 4 } },
               h(EditableSelect, { label: "業種", value: sel.industry, options: getOpts(so, "INDUSTRY_OPTIONS", INDUSTRY_OPTIONS), onSave: function(v) { saveCompany(Object.assign({}, sel, { industry: v })); } }),
               h(EditableSelect, { label: "小分類", value: sel.industryDetail, options: getLinkedOpts(so, sel.industry, [], "INDUSTRY_SUB"), onSave: function(v) { saveCompany(Object.assign({}, sel, { industryDetail: v })); } })
@@ -339,13 +364,14 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
         )
       ),
       // コール数 | 接触数 | 接触内訳（全幅）
-      h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginTop: 8 } },
+      h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: 8, marginTop: 8 } },
         h(InfoRow, { label: "コール数", value: sel.callCount || 0 }),
         h(InfoRow, { label: "接触数", value: sel._contactCount || 0 }),
         h("div", { className: "field-box field-inline" },
           h("span", { className: "info-label-inline" }, "接触内訳"),
           h("span", { className: "info-value text-xs" }, "担当" + (sel._tantoCount||0) + " 受付" + (sel._uketsuke||0) + " 決済" + (sel._kessai||0))
-        )
+        ),
+        h(InfoRow, { label: "接触率", value: (sel.callCount > 0 ? Math.round((sel._contactCount || 0) / sel.callCount * 100) : 0) + "%" })
       ),
       // 次回コール
       h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginTop: 8, marginBottom: 8 } },
@@ -357,7 +383,58 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
         h(EditableField, { label: "次回メモ", value: sel.nextCallMemo, onSave: function(v) { saveCompany(Object.assign({}, sel, { nextCallMemo: v })); } })
       ),
       // 備考メモ
-      h(MemoEditor, { key: "memo-" + sel.id, value: sel.memo, onSave: function(v) { saveCompany(Object.assign({}, sel, { memo: v })); } })
+      h(MemoEditor, { key: "memo-" + sel.id, value: sel.memo, onSave: function(v) { saveCompany(Object.assign({}, sel, { memo: v })); } }),
+      // ハッシュタグ
+      h("div", { style: { marginTop: 8 } },
+        h("div", { className: "info-label", style: { marginBottom: 4 } }, "ハッシュタグ"),
+        h("div", { style: { display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" } },
+          compTags.map(function(t) {
+            return h("span", { key: t.id, style: { background: "#252836", border: "1px solid #3d4163", borderRadius: 12, padding: "2px 10px", fontSize: 11, color: "#7c8cf8", display: "inline-flex", alignItems: "center", gap: 4 } },
+              "#" + t.tag,
+              h("span", { style: { cursor: "pointer", color: "#ef4444", marginLeft: 2, fontSize: 10 }, onClick: function() {
+                API.removeCompanyHashtag(sel.id, t.id).then(function() { loadHashtags(sel.id); });
+              } }, "×")
+            );
+          }),
+          h("div", { style: { position: "relative" } },
+            h("input", { className: "form-input", style: { width: 130, padding: "2px 6px", fontSize: 11 }, value: htInput, placeholder: "#タグを追加",
+              onChange: function(e) { setHtInput(e.target.value); setHtShowSuggest(true); },
+              onKeyDown: function(e) {
+                if (e.key === "Enter" && htInput.trim()) {
+                  var tag = htInput.trim().replace(/^#/, "");
+                  if (tag) { API.addCompanyHashtag(sel.id, tag).then(function() { setHtInput(""); loadHashtags(sel.id); loadAllTags(); }); }
+                }
+              },
+              onFocus: function() { setHtShowSuggest(true); },
+              onBlur: function() { setTimeout(function() { setHtShowSuggest(false); }, 200); }
+            }),
+            htShowSuggest && htInput.length === 0 && allTags.length > 0 && h("div", { style: { position: "absolute", top: "100%", left: 0, background: "#1a1d27", border: "1px solid #3d4163", borderRadius: 4, zIndex: 10, maxHeight: 120, overflowY: "auto", width: 160 } },
+              allTags.filter(function(t) { return !compTags.some(function(ct) { return ct.id === t.id; }); }).map(function(t) {
+                return h("div", { key: t.id, style: { padding: "4px 8px", fontSize: 11, cursor: "pointer", color: "#7c8cf8" },
+                  onMouseDown: function() {
+                    API.addCompanyHashtag(sel.id, t.tag).then(function() { loadHashtags(sel.id); });
+                  }
+                }, "#" + t.tag);
+              })
+            ),
+            htShowSuggest && htInput.length > 0 && h("div", { style: { position: "absolute", top: "100%", left: 0, background: "#1a1d27", border: "1px solid #3d4163", borderRadius: 4, zIndex: 10, maxHeight: 120, overflowY: "auto", width: 160 } },
+              allTags.filter(function(t) { return t.tag.indexOf(htInput.replace(/^#/, "")) >= 0 && !compTags.some(function(ct) { return ct.id === t.id; }); }).map(function(t) {
+                return h("div", { key: t.id, style: { padding: "4px 8px", fontSize: 11, cursor: "pointer", color: "#7c8cf8" },
+                  onMouseDown: function() {
+                    API.addCompanyHashtag(sel.id, t.tag).then(function() { setHtInput(""); loadHashtags(sel.id); });
+                  }
+                }, "#" + t.tag);
+              }),
+              htInput.replace(/^#/, "").length > 0 && !allTags.some(function(t) { return t.tag === htInput.replace(/^#/, ""); }) && h("div", { style: { padding: "4px 8px", fontSize: 11, cursor: "pointer", color: "#22c55e", borderTop: "1px solid #2d3148" },
+                onMouseDown: function() {
+                  var tag = htInput.trim().replace(/^#/, "");
+                  API.addCompanyHashtag(sel.id, tag).then(function() { setHtInput(""); loadHashtags(sel.id); loadAllTags(); });
+                }
+              }, "「" + htInput.replace(/^#/, "") + "」を新規追加")
+            )
+          )
+        )
+      )
     ),
 
     // 営業履歴カード（タブ切替）

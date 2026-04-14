@@ -76,6 +76,13 @@ const API = {
   deleteSelectOption: (id) => fetch('/api/select-options/' + id, { method: 'DELETE' }).then(apiJson),
   reorderSelectOptions: (items) => fetch('/api/select-options/reorder', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: items }) }).then(apiJson),
 
+  // ハッシュタグ
+  getHashtags: () => fetch('/api/hashtags').then(apiJson),
+  createHashtag: (tag) => fetch('/api/hashtags', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tag: tag }) }).then(apiJson),
+  getCompanyHashtags: (companyId) => fetch('/api/companies/' + companyId + '/hashtags').then(apiJson),
+  addCompanyHashtag: (companyId, tag) => fetch('/api/companies/' + companyId + '/hashtags', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tag: tag }) }).then(apiJson),
+  removeCompanyHashtag: (companyId, hashtagId) => fetch('/api/companies/' + companyId + '/hashtags/' + hashtagId, { method: 'DELETE' }).then(apiJson),
+
   // 検索条件
   getFilters: () => fetch('/api/filters').then(apiJson),
   saveFilter: (name, filters) => fetch('/api/filters', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, filters }) }).then(apiJson),

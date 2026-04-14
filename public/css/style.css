@@ -122,6 +122,11 @@ textarea.form-input { resize: vertical; }
 .info-value { font-size: 13px; color: #cbd5e1; }
 .info-value a { color: #7c8cf8; text-decoration: none; }
 
+/* 会社名大きく */
+.company-name-big .field-box { border: none; padding: 0; }
+.company-name-big .info-value { font-size: 22px; font-weight: 700; color: #e2e8f0; }
+.company-name-big .form-input { font-size: 22px; font-weight: 700; padding: 4px 8px; }
+
 .search-input {
   width: 100%; background: #1a1d27; border: 1px solid #3d4163; border-radius: 6px;
   padding: 5px 8px; color: #e2e8f0; font-size: 12px;
