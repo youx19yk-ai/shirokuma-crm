@@ -223,6 +223,46 @@ async function initDB(retries = 10, delay = 3000) {
       // 既に存在する場合は無視
     }
   }
+  // select_optionsにparentカラム追加（既存DB対応）
+  try { await pool.query("ALTER TABLE select_options ADD COLUMN parent TEXT DEFAULT ''"); } catch(e) {}
+
+  // セレクト項目のデフォルト自動投入
+  try {
+    const selCount = await pool.query('SELECT COUNT(*) FROM select_options');
+    if (parseInt(selCount.rows[0].count) === 0) {
+      console.log('セレクト項目デフォルト投入中...');
+      const genSId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+      const selDefaults = {
+        CALL_TYPES: ['アポ','決済通話','担当者通話','受付通話','不通','提案完了','決裁','コールのみ'],
+        VISIT_RESULTS: ['未実施','契約','NG','検討','日変','訪問日変','前確NG'],
+        STATUS_OPTIONS: ['顧客','見込み','とりあえず保有','過去NG','アポ禁止'],
+        DEAL_STATUSES: ['商談中','契約済','審査中','取材予定','取材完了','納品予定','納品完了','入金予定','入金済み'],
+        INDUSTRY_OPTIONS: ['ガテン系','IT/通信','製造業','小売業','飲食業','医療/福祉','教育','不動産','建設','運送','美容','その他'],
+        PAYMENT_METHODS: ['信販','現金','振込']
+      };
+      const callTypeResults = {
+        'アポ': ['新規アポ','再訪アポ','クロスセルアポ','アップセルアポ','担当者アポ','来週アポ'],
+        '決済通話': ['必要性のYES取れず','話し込めず再コール','諦め判断'],
+        '担当者通話': ['必要性のYES取れず','話し込めず再コール','諦め判断'],
+        '受付通話': ['必要性のYES取れず','話し込めず再コール','諦め判断'],
+        '不通': [],
+        '提案完了': ['必要性のYES取れず','話し込めず再コール','諦め判断'],
+        '決裁': ['必要性のYES取れず','話し込めず再コール','諦め判断'],
+        'コールのみ': []
+      };
+      for (const [cat, vals] of Object.entries(selDefaults)) {
+        for (let i = 0; i < vals.length; i++) {
+          await pool.query('INSERT INTO select_options (id, category, value, parent, sort_order) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING', [genSId(), cat, vals[i], '', i]);
+        }
+      }
+      for (const [ct, results] of Object.entries(callTypeResults)) {
+        for (let i = 0; i < results.length; i++) {
+          await pool.query('INSERT INTO select_options (id, category, value, parent, sort_order) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING', [genSId(), 'CALL_TYPE_RESULTS', results[i], ct, i]);
+        }
+      }
+      console.log('セレクト項目デフォルト投入完了');
+    }
+  } catch(e) { console.error('セレクト項目投入エラー:', e.message); }
 
   console.log('DB initialized');
 }

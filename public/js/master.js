@@ -282,13 +282,6 @@ function MasterPage({ plans, agents, creditCompanies, onReload }) {
 
     // ---- セレクト項目 ----
     tab === "selects" && h("div", null,
-      // 初期データ投入ボタン
-      selOpts.length === 0 && h("div", { className: "card mb-12", style: { textAlign: "center", padding: 20 } },
-        h("div", { className: "text-muted mb-8" }, "セレクト項目が未登録です。デフォルト項目を投入しますか？"),
-        h("button", { className: "btn btn-primary", onClick: function() {
-          fetch('/api/select-options/seed-defaults', { method: 'POST' }).then(function() { loadSelOpts(); });
-        } }, "デフォルト項目を投入")
-      ),
       h("div", { className: "card" },
         h("div", { className: "card-header" },
           h("div", { className: "card-title" }, "セレクト項目管理")
