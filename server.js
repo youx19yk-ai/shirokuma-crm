@@ -171,6 +171,7 @@ async function initDB(retries = 10, delay = 3000) {
       id TEXT PRIMARY KEY,
       category TEXT NOT NULL,
       value TEXT NOT NULL,
+      parent TEXT DEFAULT '',
       sort_order INTEGER DEFAULT 0,
       active BOOLEAN DEFAULT true,
       created_at TIMESTAMP DEFAULT NOW()
@@ -1112,19 +1113,65 @@ app.delete('/api/targets/:id', async (req, res) => {
 app.get('/api/select-options', async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM select_options ORDER BY category, sort_order, created_at');
-    res.json(rows.map(r => ({ id: r.id, category: r.category, value: r.value, sortOrder: r.sort_order, active: r.active })));
+    res.json(rows.map(r => ({ id: r.id, category: r.category, value: r.value, parent: r.parent || '', sortOrder: r.sort_order, active: r.active })));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.post('/api/select-options', async (req, res) => {
-  const { category, value } = req.body; const id = genId();
+  const { category, value, parent } = req.body; const id = genId();
   try {
-    await pool.query('INSERT INTO select_options (id, category, value) VALUES ($1,$2,$3)', [id, category, value]);
+    await pool.query('INSERT INTO select_options (id, category, value, parent) VALUES ($1,$2,$3,$4)', [id, category, value, parent || '']);
     res.json({ id });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.delete('/api/select-options/:id', async (req, res) => {
   try { await pool.query('DELETE FROM select_options WHERE id=$1', [req.params.id]); res.json({ ok: true }); }
   catch (e) { res.status(500).json({ error: e.message }); }
+});
+// デフォルト項目一括投入
+app.post('/api/select-options/seed-defaults', async (req, res) => {
+  try {
+    const defaults = {
+      CALL_TYPES: ['アポ','決済通話','担当者通話','受付通話','不通','提案完了','決裁','コールのみ'],
+      CALL_RESULTS: ['必要性のYES取れず','話し込めず再コール','諦め判断','アポ取得'],
+      VISIT_RESULTS: ['未実施','契約','NG','検討','日変','訪問日変','前確NG'],
+      STATUS_OPTIONS: ['顧客','見込み','とりあえず保有','過去NG','アポ禁止'],
+      DEAL_STATUSES: ['商談中','契約済','審査中','取材予定','取材完了','納品予定','納品完了','入金予定','入金済み'],
+      INDUSTRY_OPTIONS: ['ガテン系','IT/通信','製造業','小売業','飲食業','医療/福祉','教育','不動産','建設','運送','美容','その他'],
+      PAYMENT_METHODS: ['信販','現金','振込']
+    };
+    // 通話分類→結果の紐づき
+    const callTypeResults = {
+      'アポ': ['新規アポ','再訪アポ','クロスセルアポ','アップセルアポ','担当者アポ','来週アポ'],
+      '決済通話': ['必要性のYES取れず','話し込めず再コール','諦め判断'],
+      '担当者通話': ['必要性のYES取れず','話し込めず再コール','諦め判断'],
+      '受付通話': ['必要性のYES取れず','話し込めず再コール','諦め判断'],
+      '不通': [],
+      '提案完了': ['必要性のYES取れず','話し込めず再コール','諦め判断'],
+      '決裁': ['必要性のYES取れず','話し込めず再コール','諦め判断'],
+      'コールのみ': []
+    };
+    let count = 0;
+    for (const [cat, vals] of Object.entries(defaults)) {
+      for (let i = 0; i < vals.length; i++) {
+        const exists = await pool.query('SELECT id FROM select_options WHERE category=$1 AND value=$2 AND parent=$3', [cat, vals[i], '']);
+        if (exists.rows.length === 0) {
+          await pool.query('INSERT INTO select_options (id, category, value, parent, sort_order) VALUES ($1,$2,$3,$4,$5)', [genId(), cat, vals[i], '', i]);
+          count++;
+        }
+      }
+    }
+    // 通話分類→結果の紐づき
+    for (const [callType, results] of Object.entries(callTypeResults)) {
+      for (let i = 0; i < results.length; i++) {
+        const exists = await pool.query('SELECT id FROM select_options WHERE category=$1 AND value=$2 AND parent=$3', ['CALL_TYPE_RESULTS', results[i], callType]);
+        if (exists.rows.length === 0) {
+          await pool.query('INSERT INTO select_options (id, category, value, parent, sort_order) VALUES ($1,$2,$3,$4,$5)', [genId(), 'CALL_TYPE_RESULTS', results[i], callType, i]);
+          count++;
+        }
+      }
+    }
+    res.json({ ok: true, inserted: count });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // 検索条件 API
