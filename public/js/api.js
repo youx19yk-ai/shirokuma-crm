@@ -76,6 +76,11 @@ const API = {
   updateTarget: (id, t) => fetch('/api/targets/' + id, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(t) }).then(apiJson),
   deleteTarget: (id) => fetch('/api/targets/' + id, { method: 'DELETE' }).then(apiJson),
 
+  // セレクト項目
+  getSelectOptions: () => fetch('/api/select-options').then(apiJson),
+  createSelectOption: (data) => fetch('/api/select-options', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(apiJson),
+  deleteSelectOption: (id) => fetch('/api/select-options/' + id, { method: 'DELETE' }).then(apiJson),
+
   // 検索条件
   getFilters: () => fetch('/api/filters').then(apiJson),
   saveFilter: (name, filters) => fetch('/api/filters', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, filters }) }).then(apiJson),

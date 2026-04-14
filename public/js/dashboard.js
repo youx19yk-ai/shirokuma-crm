@@ -319,7 +319,7 @@ function DashboardPage(_props) {
                 todayTasks.map(function(t) {
                   return h("tr", { key: t.id, onClick: function() { onNavigate("companies", t.id); } },
                     h("td", { style: { fontWeight: 600 } }, t.name),
-                    h("td", null, h("span", { className: "badge badge-blue" }, t.agent)),
+                    t.agent ? h("td", null, h("span", { className: "badge badge-blue" }, t.agent)) : h("td"),
                     h("td", { style: { color: "#94a3b8" } }, t.memo || "")
                   );
                 })

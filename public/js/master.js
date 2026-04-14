@@ -4,6 +4,42 @@
 function MasterPage({ plans, agents, creditCompanies, onReload }) {
   var _tab = useState("plans"), tab = _tab[0], setTab = _tab[1];
 
+  // セレクト項目管理
+  var _selOpts = useState([]), selOpts = _selOpts[0], setSelOpts = _selOpts[1];
+  var _selCat = useState("CALL_TYPES"), selCat = _selCat[0], setSelCat = _selCat[1];
+  var _selNew = useState(""), selNew = _selNew[0], setSelNew = _selNew[1];
+  var SEL_CATEGORIES = [
+    { key: "CALL_TYPES", label: "通話分類", defaults: CALL_TYPES },
+    { key: "CALL_RESULTS", label: "通話結果", defaults: CALL_RESULTS },
+    { key: "VISIT_RESULTS", label: "訪問結果", defaults: VISIT_RESULTS },
+    { key: "STATUS_OPTIONS", label: "見込み分類", defaults: STATUS_OPTIONS },
+    { key: "DEAL_STATUSES", label: "案件ステータス", defaults: DEAL_STATUSES },
+    { key: "INDUSTRY_OPTIONS", label: "業種", defaults: INDUSTRY_OPTIONS },
+    { key: "PAYMENT_METHODS", label: "決済方法", defaults: PAYMENT_METHODS }
+  ];
+  function loadSelOpts() {
+    API.getSelectOptions().then(function(d) { setSelOpts(d); }).catch(function() { setSelOpts([]); });
+  }
+  useEffect(function() { loadSelOpts(); }, []);
+
+  function getOptsForCat(catKey) {
+    var custom = selOpts.filter(function(o) { return o.category === catKey; });
+    var catDef = SEL_CATEGORIES.find(function(c) { return c.key === catKey; });
+    var defaults = catDef ? catDef.defaults : [];
+    // デフォルト + カスタム（重複排除）
+    var all = defaults.slice();
+    custom.forEach(function(c) { if (all.indexOf(c.value) < 0) all.push(c.value); });
+    return { all: all, custom: custom, defaults: defaults };
+  }
+
+  function addSelOpt() {
+    if (!selNew.trim()) return;
+    API.createSelectOption({ category: selCat, value: selNew.trim() }).then(function() { setSelNew(""); loadSelOpts(); });
+  }
+  function delSelOpt(id) {
+    API.deleteSelectOption(id).then(function() { loadSelOpts(); });
+  }
+
   // 目標設定
   var _targets = useState([]), targets = _targets[0], setTargets = _targets[1];
   var _tgLoad = useState(false), tgLoading = _tgLoad[0], setTgLoading = _tgLoad[1];
@@ -82,7 +118,7 @@ function MasterPage({ plans, agents, creditCompanies, onReload }) {
   return h("div", null,
     // タブ
     h("div", { className: "flex gap-4 mb-16" },
-      [["plans","商品プラン"],["agents","担当者"],["credit","信販会社"],["targets","目標設定"]].map(function(t) {
+      [["plans","商品プラン"],["agents","担当者"],["credit","信販会社"],["targets","目標設定"],["selects","セレクト項目"]].map(function(t) {
         return h("button", { key: t[0], className: "btn btn-sm " + (tab === t[0] ? "btn-primary" : "btn-ghost"),
           onClick: function() { setTab(t[0]); }
         }, t[1]);
@@ -245,6 +281,47 @@ function MasterPage({ plans, agents, creditCompanies, onReload }) {
                 })
               )
             )
+    ),
+
+    // ---- セレクト項目 ----
+    tab === "selects" && h("div", { className: "card" },
+      h("div", { className: "card-header" },
+        h("div", { className: "card-title" }, "セレクト項目管理")
+      ),
+      // カテゴリ選択
+      h("div", { className: "flex gap-4 mb-12", style: { flexWrap: "wrap" } },
+        SEL_CATEGORIES.map(function(c) {
+          return h("button", { key: c.key, className: "btn btn-sm " + (selCat === c.key ? "btn-primary" : "btn-ghost"),
+            onClick: function() { setSelCat(c.key); }
+          }, c.label);
+        })
+      ),
+      // 追加フォーム
+      h("div", { className: "flex gap-8 mb-12" },
+        h("input", { className: "form-input", style: { maxWidth: 250 }, value: selNew, placeholder: "新しい項目名",
+          onChange: function(e) { setSelNew(e.target.value); },
+          onKeyDown: function(e) { if (e.key === "Enter") addSelOpt(); }
+        }),
+        h("button", { className: "btn btn-primary btn-sm", onClick: addSelOpt }, "追加")
+      ),
+      // 項目一覧
+      (function() {
+        var opts = getOptsForCat(selCat);
+        return h("div", null,
+          h("div", { className: "text-muted text-xs mb-8" }, "デフォルト項目は削除できません。追加した項目のみ削除可能です。"),
+          opts.all.map(function(val, i) {
+            var customItem = opts.custom.find(function(c) { return c.value === val; });
+            var isDefault = opts.defaults.indexOf(val) >= 0;
+            return h("div", { key: val + i, className: "master-item" },
+              h("span", { style: { fontWeight: 600 } }, val),
+              h("span", { className: "text-xs text-muted", style: { marginLeft: 8 } }, isDefault ? "デフォルト" : "追加"),
+              customItem && !isDefault ? h("button", { className: "btn-icon btn-sm", style: { color: "#ef4444" },
+                onClick: function() { delSelOpt(customItem.id); }
+              }, "削除") : null
+            );
+          })
+        );
+      })()
     )
   );
 }

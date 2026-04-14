@@ -166,6 +166,15 @@ async function initDB(retries = 10, delay = 3000) {
       contract_target INTEGER DEFAULT 0,
       created_at TIMESTAMP DEFAULT NOW()
     );
+
+    CREATE TABLE IF NOT EXISTS select_options (
+      id TEXT PRIMARY KEY,
+      category TEXT NOT NULL,
+      value TEXT NOT NULL,
+      sort_order INTEGER DEFAULT 0,
+      active BOOLEAN DEFAULT true,
+      created_at TIMESTAMP DEFAULT NOW()
+    );
   `);
 
   // 既存のcallsテーブルからactivitiesへの移行
@@ -689,9 +698,8 @@ app.get('/api/dashboard/stats', async (req, res) => {
       monthCalls: parseInt(monthCalls.rows[0].count),
       monthAppo: parseInt(monthAppo.rows[0].count),
       monthDeals: parseInt(monthDeals.rows[0].count),
-      todayTasks: todayTasks.rows.map(r => ({ id: r.id, name: r.name, date: r.next_call_date, memo: r.next_call_memo, time: r.next_call_time })),
+      todayTasks: todayTasks.rows.map(r => ({ id: r.id, name: r.name, date: r.next_call_date, memo: r.next_call_memo, time: r.next_call_time, agent: r.next_call_agent })),
       overdue: overdue.rows.map(r => ({ id: r.id, name: r.name, date: r.next_call_date, memo: r.next_call_memo, time: r.next_call_time, agent: r.next_call_agent })),
-      todayTasksWithAgent: todayTasks.rows.map(r => ({ id: r.id, name: r.name, date: r.next_call_date, memo: r.next_call_memo, agent: r.next_call_agent })),
       byProspectOwner: (await pool.query("SELECT prospect_owner, COUNT(*) FROM companies WHERE prospect_owner != '' GROUP BY prospect_owner ORDER BY count DESC")).rows.reduce((acc, r) => { acc[r.prospect_owner] = parseInt(r.count); return acc; }, {})
     });
   } catch (e) {
@@ -1096,6 +1104,26 @@ app.put('/api/targets/:id', async (req, res) => {
 });
 app.delete('/api/targets/:id', async (req, res) => {
   try { await pool.query('DELETE FROM targets WHERE id=$1', [req.params.id]); res.json({ ok: true }); }
+  catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// セレクト項目管理 API
+// ============================================================
+app.get('/api/select-options', async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT * FROM select_options ORDER BY category, sort_order, created_at');
+    res.json(rows.map(r => ({ id: r.id, category: r.category, value: r.value, sortOrder: r.sort_order, active: r.active })));
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.post('/api/select-options', async (req, res) => {
+  const { category, value } = req.body; const id = genId();
+  try {
+    await pool.query('INSERT INTO select_options (id, category, value) VALUES ($1,$2,$3)', [id, category, value]);
+    res.json({ id });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+app.delete('/api/select-options/:id', async (req, res) => {
+  try { await pool.query('DELETE FROM select_options WHERE id=$1', [req.params.id]); res.json({ ok: true }); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
 
