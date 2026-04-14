@@ -1,7 +1,8 @@
 // ============================================================
 // 企業管理画面
 // ============================================================
-function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plans, creditCompanies, savedFilters, onSaveFilter }) {
+function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plans, creditCompanies, savedFilters, onSaveFilter, selectOptions }) {
+  var so = selectOptions || [];
   var _v = useState("detail"), view = _v[0], setView = _v[1];
   var _ed = useState(null), editData = _ed[0], setEditData = _ed[1];
   var _undo = useState([]), undoStack = _undo[0], setUndoStack = _undo[1];
@@ -101,7 +102,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
     var data = Object.assign({}, actData, { type: actType });
     API.addActivity(selectedId, data).then(function() {
       // アポ結果の場合、訪問予定レコードを自動作成
-      if (actType === "コール" && actData.callType === "アポ" && APPO_RESULTS.includes(actData.callResult)) {
+      if (actType === "コール" && actData.callType === "アポ" && getLinkedOpts(so, "アポ", APPO_RESULTS).includes(actData.callResult)) {
         API.addActivity(selectedId, {
           type: "アポ",
           date: actData.nextCallDate || "",
@@ -270,9 +271,9 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
           ),
           // ---- 右カラム ----
           h("div", null,
-            h(EditableSelect, { label: "見込み分類", value: sel.status, options: STATUS_OPTIONS, onSave: function(v) { saveCompany(Object.assign({}, sel, { status: v })); } }),
+            h(EditableSelect, { label: "見込み分類", value: sel.status, options: getOpts(so, "STATUS_OPTIONS", STATUS_OPTIONS), onSave: function(v) { saveCompany(Object.assign({}, sel, { status: v })); } }),
             h("div", { style: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 4 } },
-              h(EditableSelect, { label: "業種", value: sel.industry, options: INDUSTRY_OPTIONS, onSave: function(v) { saveCompany(Object.assign({}, sel, { industry: v })); } }),
+              h(EditableSelect, { label: "業種", value: sel.industry, options: getOpts(so, "INDUSTRY_OPTIONS", INDUSTRY_OPTIONS), onSave: function(v) { saveCompany(Object.assign({}, sel, { industry: v })); } }),
               h(EditableField, { label: "小分類", value: sel.industryDetail, onSave: function(v) { saveCompany(Object.assign({}, sel, { industryDetail: v })); } })
             ),
             h("div", { style: { marginTop: 4 } },
@@ -386,8 +387,8 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
             : h(FormInput, { label: "担当者", value: actData.agent, onChange: upAct("agent") })
         ),
         actType === "コール" && h("div", { className: "form-row form-row-2" },
-          h(FormSelect, { label: "通話分類", options: CALL_TYPES, value: actData.callType, onChange: function(v) { upAct("callType")(v); upAct("callResult")(""); } }),
-          h(FormSelect, { label: "通話結果", options: actData.callType === "アポ" ? APPO_RESULTS : CALL_RESULTS, value: actData.callResult, onChange: upAct("callResult") })
+          h(FormSelect, { label: "通話分類", options: getOpts(so, "CALL_TYPES", CALL_TYPES), value: actData.callType, onChange: function(v) { upAct("callType")(v); upAct("callResult")(""); } }),
+          h(FormSelect, { label: "通話結果", options: getLinkedOpts(so, actData.callType, actData.callType === "アポ" ? APPO_RESULTS : CALL_RESULTS), value: actData.callResult, onChange: upAct("callResult") })
         ),
         (actType === "アポ" || actType === "商談") && h("div", null,
           h("div", { className: "form-row form-row-3", style: { marginBottom: 6 } },
@@ -402,8 +403,8 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
               : h(FormInput, { label: "リサーチ", value: actData.researcher, onChange: upAct("researcher") })
           ),
           h("div", { className: "form-row form-row-2" },
-            h(FormSelect, { label: "訪問結果", options: VISIT_RESULTS, value: actData.visitResult, onChange: upAct("visitResult") }),
-            h(FormSelect, { label: "アポ種別", options: APPO_RESULTS, value: actData.appoType, onChange: upAct("appoType") })
+            h(FormSelect, { label: "訪問結果", options: getOpts(so, "VISIT_RESULTS", VISIT_RESULTS), value: actData.visitResult, onChange: upAct("visitResult") }),
+            h(FormSelect, { label: "アポ種別", options: getLinkedOpts(so, "アポ", APPO_RESULTS), value: actData.appoType, onChange: upAct("appoType") })
           )
         ),
         h(FormInput, { label: "内容", value: actData.content, onChange: upAct("content") }),
@@ -459,8 +460,8 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
                 // 通話: 日付|分類(2行)|結果(2行)|内容(3行)|通話者|削除(縦長)
                 return h("div", { key: a.id, className: "activity-item", style: { display: "grid", gridTemplateColumns: "90px 80px 100px 1fr 60px 28px", gap: 4, alignItems: "stretch" } },
                   h(EditableField, { label: "日付", value: a.date, type: "date", onSave: function(v) { saveAct(a, "date", v); } }),
-                  h(EditableSelect, { label: "分類", value: a.callType, options: CALL_TYPES, onSave: function(v) { saveAct(a, "callType", v); } }),
-                  h(EditableSelect, { label: "結果", value: a.callResult, options: a.callType === "アポ" ? APPO_RESULTS : CALL_RESULTS, onSave: function(v) { saveAct(a, "callResult", v); } }),
+                  h(EditableSelect, { label: "分類", value: a.callType, options: getOpts(so, "CALL_TYPES", CALL_TYPES), onSave: function(v) { saveAct(a, "callType", v); } }),
+                  h(EditableSelect, { label: "結果", value: a.callResult, options: getLinkedOpts(so, a.callType, a.callType === "アポ" ? APPO_RESULTS : CALL_RESULTS), onSave: function(v) { saveAct(a, "callResult", v); } }),
                   h(EditableField, { label: "内容", value: a.content, onSave: function(v) { saveAct(a, "content", v); }, multi: true }),
                   agents.length > 0
                     ? h(EditableSelect, { label: "通話者", value: a.agent, options: agentOpts, onSave: function(v) { saveAct(a, "agent", v); } })
@@ -477,7 +478,7 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
                     h("div", { className: "info-label" }, "訪問分類"),
                     h("div", { className: "info-value", style: { fontSize: 11 } }, a.appoType || "―")
                   ),
-                  h(EditableSelect, { label: "結果", value: a.visitResult, options: VISIT_RESULTS, onSave: function(v) { saveAct(a, "visitResult", v); } }),
+                  h(EditableSelect, { label: "結果", value: a.visitResult, options: getOpts(so, "VISIT_RESULTS", VISIT_RESULTS), onSave: function(v) { saveAct(a, "visitResult", v); } }),
                   h(EditableField, { label: "内容", value: a.content, onSave: function(v) { saveAct(a, "content", v); }, multi: true }),
                   agents.length > 0 ? h(EditableSelect, { label: "訪問者", value: a.visitor, options: agentOpts, onSave: function(v) { saveAct(a, "visitor", v); } }) : h(EditableField, { label: "訪問者", value: a.visitor, onSave: function(v) { saveAct(a, "visitor", v); } }),
                   agents.length > 0 ? h(EditableSelect, { label: "アポ", value: a.appointer, options: agentOpts, onSave: function(v) { saveAct(a, "appointer", v); } }) : h(EditableField, { label: "アポ", value: a.appointer, onSave: function(v) { saveAct(a, "appointer", v); } }),
@@ -702,9 +703,9 @@ function SearchModeView({ query, onChange, onSearch, onCancel, onSaveFilter, age
         ),
         // 右カラム
         h("div", null,
-          h(FormSelect, { label: "見込み分類", options: STATUS_OPTIONS, value: query.status || "", onChange: s("status") }),
+          h(FormSelect, { label: "見込み分類", options: getOpts(so, "STATUS_OPTIONS", STATUS_OPTIONS), value: query.status || "", onChange: s("status") }),
           h("div", { style: { display: "flex", gap: 8 } },
-            h("div", { style: { flex: 1 } }, h(FormSelect, { label: "業種", options: INDUSTRY_OPTIONS, value: query.industry || "", onChange: s("industry") })),
+            h("div", { style: { flex: 1 } }, h(FormSelect, { label: "業種", options: getOpts(so, "INDUSTRY_OPTIONS", INDUSTRY_OPTIONS), value: query.industry || "", onChange: s("industry") })),
             h("div", { style: { flex: 1 } }, h(FormInput, { label: "小分類", value: query.industryDetail || "", onChange: s("industryDetail") }))
           ),
           h(FormInput, { label: "代表者名", value: query.representative || "", onChange: s("representative") }),
@@ -714,8 +715,8 @@ function SearchModeView({ query, onChange, onSearch, onCancel, onSaveFilter, age
       // 営業行動
       h("div", { className: "text-xs mb-8 mt-12", style: { fontWeight: 600, color: "#64748b", borderBottom: "1px solid #2d3148", paddingBottom: 4 } }, "営業行動"),
       h("div", { style: { display: "flex", gap: 8 } },
-        h("div", { style: { flex: 1 } }, h(FormSelect, { label: "通話分類", options: CALL_TYPES, value: query.callType || "", onChange: s("callType") })),
-        h("div", { style: { flex: 1 } }, h(FormSelect, { label: "通話結果", options: CALL_RESULTS.concat(APPO_RESULTS), value: query.callResult || "", onChange: s("callResult") })),
+        h("div", { style: { flex: 1 } }, h(FormSelect, { label: "通話分類", options: getOpts(so, "CALL_TYPES", CALL_TYPES), value: query.callType || "", onChange: s("callType") })),
+        h("div", { style: { flex: 1 } }, h(FormSelect, { label: "通話結果", options: getOpts(so, "CALL_RESULTS", CALL_RESULTS).concat(getLinkedOpts(so, "アポ", APPO_RESULTS)), value: query.callResult || "", onChange: s("callResult") })),
         h("div", { style: { flex: 1 } }, h(FormInput, { label: "内容", value: query.actContent || "", onChange: s("actContent"), placeholder: "内容で検索" })),
         h("div", { style: { flex: 1 } }, h(FormInput, { label: "備考メモ", value: query.memo || "", onChange: s("memo"), placeholder: "メモで検索" }))
       ),

@@ -30,6 +30,18 @@ const CSV_MAP = {
   "備考":"memo","メモ":"memo"
 };
 
+// セレクト項目ヘルパー（DBから取得した値を返す、なければフォールバック）
+function getOpts(selOpts, category, fallback) {
+  if (!selOpts || selOpts.length === 0) return fallback || [];
+  var items = selOpts.filter(function(o) { return o.category === category && !o.parent; });
+  return items.length > 0 ? items.map(function(o) { return o.value; }) : (fallback || []);
+}
+function getLinkedOpts(selOpts, callType, fallback) {
+  if (!selOpts || selOpts.length === 0) return fallback || [];
+  var items = selOpts.filter(function(o) { return o.category === 'CALL_TYPE_RESULTS' && o.parent === callType; });
+  return items.length > 0 ? items.map(function(o) { return o.value; }) : (fallback || []);
+}
+
 // ユーティリティ
 function statusColor(s) {
   return { 顧客: "#22c55e", 見込み: "#3b82f6", "とりあえず保有": "#94a3b8", "過去NG": "#ef4444", "アポ禁止": "#ef4444" }[s] || "#94a3b8";

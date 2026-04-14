@@ -1,7 +1,8 @@
 // ============================================================
 // 案件管理画面
 // ============================================================
-function DealsPage({ agents, plans, creditCompanies, onNavigate }) {
+function DealsPage({ agents, plans, creditCompanies, onNavigate, selectOptions }) {
+  var so = selectOptions || [];
   var _d = useState([]), deals = _d[0], setDeals = _d[1];
   var _l = useState(true), loading = _l[0], setLoading = _l[1];
   var _fa = useState(""), filterAgent = _fa[0], setFilterAgent = _fa[1];
@@ -70,7 +71,7 @@ function DealsPage({ agents, plans, creditCompanies, onNavigate }) {
         h("div", { className: "form-label" }, "ステータス"),
         h("select", { className: "search-input", value: filterStatus, onChange: function(e) { setFilterStatus(e.target.value); } },
           h("option", { value: "" }, "すべて"),
-          DEAL_STATUSES.map(function(s) { return h("option", { key: s, value: s }, s); })
+          getOpts(so, "DEAL_STATUSES", DEAL_STATUSES).map(function(s) { return h("option", { key: s, value: s }, s); })
         )
       ),
       h("div", { style: { flex: 1 } }),
@@ -153,7 +154,7 @@ function DealsPage({ agents, plans, creditCompanies, onNavigate }) {
         ),
         h("div", { className: "form-row form-row-2" },
           h(FormInput, { label: "案件名", value: editDeal.title, onChange: s("title") }),
-          h(FormSelect, { label: "ステータス", options: DEAL_STATUSES, value: editDeal.status, onChange: s("status") })
+          h(FormSelect, { label: "ステータス", options: getOpts(so, "DEAL_STATUSES", DEAL_STATUSES), value: editDeal.status, onChange: s("status") })
         ),
         h("div", { className: "form-row form-row-3" },
           agents.length > 0
@@ -163,7 +164,7 @@ function DealsPage({ agents, plans, creditCompanies, onNavigate }) {
           h(FormInput, { label: "契約金額", type: "number", value: editDeal.contractAmount, onChange: function(v) { s("contractAmount")(parseInt(v) || 0); } })
         ),
         h("div", { className: "form-row form-row-3" },
-          h(FormSelect, { label: "決済方法", options: PAYMENT_METHODS, value: editDeal.paymentMethod, onChange: s("paymentMethod") }),
+          h(FormSelect, { label: "決済方法", options: getOpts(so, "PAYMENT_METHODS", PAYMENT_METHODS), value: editDeal.paymentMethod, onChange: s("paymentMethod") }),
           h(FormInput, { label: "原価", type: "number", value: editDeal.cost, onChange: function(v) { s("cost")(parseInt(v) || 0); } }),
           h("div", null,
             h("div", { className: "form-label" }, "粗利（自動計算）"),
