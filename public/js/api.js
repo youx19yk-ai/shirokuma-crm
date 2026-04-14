@@ -45,12 +45,6 @@ const API = {
   getDashboardStats: () => fetch('/api/dashboard/stats').then(apiJson),
   getKpi: (params) => { var qs = params ? '?' + new URLSearchParams(params).toString() : ''; return fetch('/api/dashboard/kpi' + qs).then(apiJson); },
   getDailyCalls: () => fetch('/api/dashboard/daily-calls').then(apiJson),
-  getByAgent: () => fetch('/api/dashboard/by-agent').then(apiJson),
-  getAgentReport: (name, from, to) => {
-    let qs = '';
-    if (from && to) qs = '?from=' + from + '&to=' + to;
-    return fetch('/api/report/agent/' + encodeURIComponent(name) + qs).then(apiJson);
-  },
 
   // カレンダー
   getCalendar: (year, month) => fetch('/api/calendar/' + year + '/' + month).then(apiJson),
