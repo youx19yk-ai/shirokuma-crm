@@ -74,6 +74,7 @@ const API = {
   getSelectOptions: () => fetch('/api/select-options').then(apiJson),
   createSelectOption: (data) => fetch('/api/select-options', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(apiJson),
   deleteSelectOption: (id) => fetch('/api/select-options/' + id, { method: 'DELETE' }).then(apiJson),
+  reorderSelectOptions: (items) => fetch('/api/select-options/reorder', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: items }) }).then(apiJson),
 
   // 検索条件
   getFilters: () => fetch('/api/filters').then(apiJson),

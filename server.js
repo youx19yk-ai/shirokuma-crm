@@ -211,6 +211,10 @@ async function initDB(retries = 10, delay = 3000) {
   try { await pool.query("ALTER TABLE companies ADD COLUMN prospect_owner TEXT DEFAULT ''"); } catch(e) {}
   try { await pool.query("ALTER TABLE companies ADD COLUMN has_web TEXT DEFAULT ''"); } catch(e) {}
   try { await pool.query("ALTER TABLE agents ADD COLUMN team TEXT DEFAULT ''"); } catch(e) {}
+  try { await pool.query("ALTER TABLE agents ADD COLUMN department TEXT DEFAULT ''"); } catch(e) {}
+  try { await pool.query("ALTER TABLE agents ADD COLUMN section TEXT DEFAULT ''"); } catch(e) {}
+  try { await pool.query("ALTER TABLE agents ADD COLUMN role TEXT DEFAULT '一般'"); } catch(e) {}
+  try { await pool.query("ALTER TABLE agents ADD COLUMN member_id TEXT DEFAULT ''"); } catch(e) {}
   try { await pool.query("ALTER TABLE companies ADD COLUMN next_call_agent TEXT DEFAULT ''"); } catch(e) {}
   try { await pool.query("ALTER TABLE activities ADD COLUMN visit_role TEXT DEFAULT ''"); } catch(e) {}
   try { await pool.query("ALTER TABLE activities ADD COLUMN visitor TEXT DEFAULT ''"); } catch(e) {}
@@ -260,9 +264,33 @@ async function initDB(retries = 10, delay = 3000) {
           await pool.query('INSERT INTO select_options (id, category, value, parent, sort_order) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING', [genSId(), 'CALL_TYPE_RESULTS', results[i], ct, i]);
         }
       }
+      // 部署デフォルト
+      const depts = ['営業部','制作部','管理本部'];
+      for (let i = 0; i < depts.length; i++) {
+        await pool.query('INSERT INTO select_options (id, category, value, parent, sort_order) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING', [genSId(), 'DEPARTMENTS', depts[i], '', i]);
+      }
+      const sections = { '営業部': ['営業1課','営業2課'], '制作部': ['制作課'], '管理本部': ['管理課'] };
+      for (const [dept, secs] of Object.entries(sections)) {
+        for (let i = 0; i < secs.length; i++) {
+          await pool.query('INSERT INTO select_options (id, category, value, parent, sort_order) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING', [genSId(), 'SECTIONS', secs[i], dept, i]);
+        }
+      }
+      const roles = ['部長','課長','主任','一般'];
+      for (let i = 0; i < roles.length; i++) {
+        await pool.query('INSERT INTO select_options (id, category, value, parent, sort_order) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING', [genSId(), 'ROLES', roles[i], '', i]);
+      }
       console.log('セレクト項目デフォルト投入完了');
     }
   } catch(e) { console.error('セレクト項目投入エラー:', e.message); }
+
+  // 既存agentsにmember_id未設定のものがあれば自動採番
+  try {
+    const agentsWithoutId = await pool.query("SELECT id FROM agents WHERE member_id IS NULL OR member_id = ''");
+    for (let i = 0; i < agentsWithoutId.rows.length; i++) {
+      const mid = 'M' + String(Date.now()).slice(-6) + String(i + 1).padStart(2, '0');
+      await pool.query('UPDATE agents SET member_id=$1 WHERE id=$2', [mid, agentsWithoutId.rows[i].id]);
+    }
+  } catch(e) {}
 
   console.log('DB initialized');
 }
@@ -1002,22 +1030,27 @@ app.delete('/api/plans/:id', async (req, res) => {
 // 担当者マスタ
 app.get('/api/agents', async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM agents ORDER BY team, created_at');
-    res.json(rows.map(a => ({ id: a.id, name: a.name, team: a.team || '' })));
+    const { rows } = await pool.query('SELECT * FROM agents ORDER BY department, section, created_at');
+    res.json(rows.map(a => ({ id: a.id, name: a.name, team: a.team || '', department: a.department || '', section: a.section || '', role: a.role || '一般', memberId: a.member_id || '' })));
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.post('/api/agents', async (req, res) => {
   const id = genId();
+  const b = req.body;
+  const mid = 'M' + String(Date.now()).slice(-6) + String(Math.floor(Math.random()*90)+10);
   try {
-    await pool.query('INSERT INTO agents (id, name, team) VALUES ($1, $2, $3)', [id, req.body.name, req.body.team||'']);
-    res.json({ id });
+    await pool.query('INSERT INTO agents (id, name, team, department, section, role, member_id) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+      [id, b.name, b.team||'', b.department||'', b.section||'', b.role||'一般', mid]);
+    res.json({ id, memberId: mid });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.put('/api/agents/:id', async (req, res) => {
+  const b = req.body;
   try {
-    await pool.query('UPDATE agents SET name=$1, team=$2 WHERE id=$3', [req.body.name, req.body.team||'', req.params.id]);
+    await pool.query('UPDATE agents SET name=$1, team=$2, department=$3, section=$4, role=$5 WHERE id=$6',
+      [b.name, b.team||'', b.department||'', b.section||'', b.role||'一般', req.params.id]);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -1098,6 +1131,16 @@ app.post('/api/select-options', async (req, res) => {
 app.delete('/api/select-options/:id', async (req, res) => {
   try { await pool.query('DELETE FROM select_options WHERE id=$1', [req.params.id]); res.json({ ok: true }); }
   catch (e) { res.status(500).json({ error: e.message }); }
+});
+// 並び替え
+app.put('/api/select-options/reorder', async (req, res) => {
+  try {
+    const items = req.body.items || [];
+    for (const item of items) {
+      await pool.query('UPDATE select_options SET sort_order=$1 WHERE id=$2', [item.sortOrder, item.id]);
+    }
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 // デフォルト項目一括投入
 app.post('/api/select-options/seed-defaults', async (req, res) => {

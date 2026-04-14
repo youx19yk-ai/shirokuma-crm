@@ -18,6 +18,8 @@ function MasterPage({ plans, agents, creditCompanies, onReload }) {
     { key: "STATUS_OPTIONS", label: "見込み分類" },
     { key: "DEAL_STATUSES", label: "案件ステータス" },
     { key: "INDUSTRY_LINK", label: "業種・小分類" },
+    { key: "DEPT_LINK", label: "部署" },
+    { key: "ROLES", label: "役職" },
     { key: "PAYMENT_METHODS", label: "決済方法" }
   ];
   function loadSelOpts() {
@@ -36,7 +38,13 @@ function MasterPage({ plans, agents, creditCompanies, onReload }) {
   }
   function addSelOpt(cat, val, parent) {
     if (!val || !val.trim()) return;
-    API.createSelectOption({ category: cat, value: val.trim(), parent: parent || '' }).then(function() { loadSelOpts(); });
+    API.createSelectOption({ category: cat, value: val.trim(), parent: parent || '' }).then(function() {
+      loadSelOpts();
+      // 通話分類追加時 → すぐ展開
+      if (cat === "CALL_TYPES") setSelCallType(val.trim());
+      if (cat === "INDUSTRY_OPTIONS") setSelIndParent(val.trim());
+      if (cat === "DEPARTMENTS") setSelIndParent(val.trim());
+    });
   }
   function delSelOpt(id) {
     API.deleteSelectOption(id).then(function() { loadSelOpts(); });
@@ -101,11 +109,19 @@ function MasterPage({ plans, agents, creditCompanies, onReload }) {
   // 担当者追加
   var _an = useState(""), agentName = _an[0], setAgentName = _an[1];
   var _at = useState(""), agentTeam = _at[0], setAgentTeam = _at[1];
+  var _adept = useState(""), agentDept = _adept[0], setAgentDept = _adept[1];
+  var _asec = useState(""), agentSec = _asec[0], setAgentSec = _asec[1];
+  var _arole = useState("一般"), agentRole = _arole[0], setAgentRole = _arole[1];
   var addAgent = function() {
     if (!agentName) return;
-    API.createAgent({ name: agentName, team: agentTeam }).then(function() { setAgentName(""); setAgentTeam(""); onReload(); });
+    API.createAgent({ name: agentName, team: agentTeam, department: agentDept, section: agentSec, role: agentRole }).then(function() {
+      setAgentName(""); setAgentTeam(""); setAgentDept(""); setAgentSec(""); setAgentRole("一般"); onReload();
+    });
   };
   var deleteAgent = function(id) { API.deleteAgent(id).then(function() { onReload(); }); };
+  function getDepts() { return selOpts.filter(function(o) { return o.category === 'DEPARTMENTS' && !o.parent; }).map(function(o) { return o.value; }); }
+  function getSections(dept) { return selOpts.filter(function(o) { return o.category === 'SECTIONS' && o.parent === dept; }).map(function(o) { return o.value; }); }
+  function getRoles() { return selOpts.filter(function(o) { return o.category === 'ROLES' && !o.parent; }).map(function(o) { return o.value; }); }
 
   // 信販会社追加
   var _cn = useState(""), creditName = _cn[0], setCreditName = _cn[1];
@@ -183,36 +199,51 @@ function MasterPage({ plans, agents, creditCompanies, onReload }) {
     // ---- 担当者 ----
     tab === "agents" && h("div", { className: "card" },
       h("div", { className: "card-header" },
-        h("div", { className: "card-title" }, "担当者")
+        h("div", { className: "card-title" }, "メンバー管理")
       ),
-      h("div", { className: "flex gap-8 mb-12" },
-        h("input", { className: "form-input", style: { maxWidth: 200 }, value: agentName, onChange: function(e) { setAgentName(e.target.value); }, placeholder: "担当者名",
-          onKeyDown: function(e) { if (e.key === "Enter") addAgent(); }
-        }),
-        h("select", { className: "form-input", style: { maxWidth: 100 }, value: agentTeam, onChange: function(e) { setAgentTeam(e.target.value); } },
-          h("option", { value: "" }, "課"),
-          h("option", { value: "1課" }, "1課"),
-          h("option", { value: "2課" }, "2課")
-        ),
-        h("button", { className: "btn btn-primary btn-sm", onClick: addAgent }, "追加")
+      h("div", { style: { background: "#252836", borderRadius: 8, padding: 14, marginBottom: 14, border: "1px solid #3d4163" } },
+        h("div", { className: "flex gap-8", style: { flexWrap: "wrap", alignItems: "end" } },
+          h("div", null, h("div", { className: "form-label" }, "名前"), h("input", { className: "form-input", style: { width: 120 }, value: agentName, placeholder: "氏名",
+            onChange: function(e) { setAgentName(e.target.value); } })),
+          h("div", null, h("div", { className: "form-label" }, "部"), h("select", { className: "form-input", style: { width: 100 }, value: agentDept,
+            onChange: function(e) { setAgentDept(e.target.value); setAgentSec(""); } },
+            h("option", { value: "" }, "―"), getDepts().map(function(d) { return h("option", { key: d, value: d }, d); })
+          )),
+          h("div", null, h("div", { className: "form-label" }, "課"), h("select", { className: "form-input", style: { width: 100 }, value: agentSec,
+            onChange: function(e) { setAgentSec(e.target.value); } },
+            h("option", { value: "" }, "―"), getSections(agentDept).map(function(s) { return h("option", { key: s, value: s }, s); })
+          )),
+          h("div", null, h("div", { className: "form-label" }, "役職"), h("select", { className: "form-input", style: { width: 80 }, value: agentRole,
+            onChange: function(e) { setAgentRole(e.target.value); } },
+            getRoles().map(function(r) { return h("option", { key: r, value: r }, r); })
+          )),
+          h("button", { className: "btn btn-primary btn-sm", style: { marginBottom: 1 }, onClick: addAgent }, "追加")
+        )
       ),
       agents.length === 0
-        ? h("div", { className: "empty-state" }, "担当者が登録されていません")
+        ? h("div", { className: "empty-state" }, "メンバーが登録されていません")
         : h("table", { className: "table" },
-            h("thead", null, h("tr", null, ["担当者名","課","操作"].map(function(th) { return h("th", { key: th }, th); }))),
+            h("thead", null, h("tr", null, ["ID","名前","部","課","役職","操作"].map(function(th) { return h("th", { key: th }, th); }))),
             h("tbody", null, agents.map(function(a) {
               return h("tr", { key: a.id, style: { cursor: "default" } },
+                h("td", { className: "text-muted", style: { fontSize: 11 } }, a.memberId || "―"),
                 h("td", { style: { fontWeight: 600 } }, a.name),
                 h("td", null,
-                  h("select", { className: "form-input", style: { padding: "2px 4px", fontSize: 12, width: 70 }, value: a.team || "",
-                    onChange: function(e) { API.updateAgent(a.id, { name: a.name, team: e.target.value }).then(function() { onReload(); }); }
-                  },
-                    h("option", { value: "" }, "―"),
-                    h("option", { value: "1課" }, "1課"),
-                    h("option", { value: "2課" }, "2課")
-                  )
+                  h("select", { className: "form-input", style: { padding: "2px 4px", fontSize: 11, width: 80 }, value: a.department || "",
+                    onChange: function(e) { API.updateAgent(a.id, { name: a.name, team: a.team, department: e.target.value, section: "", role: a.role }).then(function() { onReload(); }); }
+                  }, h("option", { value: "" }, "―"), getDepts().map(function(d) { return h("option", { key: d, value: d }, d); }))
                 ),
-                h("td", null, h("button", { className: "btn-icon btn-sm", onClick: function() { deleteAgent(a.id); } }, "×"))
+                h("td", null,
+                  h("select", { className: "form-input", style: { padding: "2px 4px", fontSize: 11, width: 80 }, value: a.section || "",
+                    onChange: function(e) { API.updateAgent(a.id, { name: a.name, team: a.team, department: a.department, section: e.target.value, role: a.role }).then(function() { onReload(); }); }
+                  }, h("option", { value: "" }, "―"), getSections(a.department).map(function(s) { return h("option", { key: s, value: s }, s); }))
+                ),
+                h("td", null,
+                  h("select", { className: "form-input", style: { padding: "2px 4px", fontSize: 11, width: 70 }, value: a.role || "一般",
+                    onChange: function(e) { API.updateAgent(a.id, { name: a.name, team: a.team, department: a.department, section: a.section, role: e.target.value }).then(function() { onReload(); }); }
+                  }, getRoles().map(function(r) { return h("option", { key: r, value: r }, r); }))
+                ),
+                h("td", null, h("button", { className: "btn-icon btn-sm", style: { color: "#ef4444" }, onClick: function() { deleteAgent(a.id); } }, "削除"))
               );
             }))
           )
@@ -396,9 +427,66 @@ function MasterPage({ plans, agents, creditCompanies, onReload }) {
           );
         })(),
 
-        // === 通常カテゴリ（一覧+追加+削除） ===
-        selCat !== "CALL_LINK" && selCat !== "INDUSTRY_LINK" && (function() {
+        // === 部署（部→課の紐づき） ===
+        selCat === "DEPT_LINK" && (function() {
+          var depts = getItems("DEPARTMENTS");
+          return h("div", null,
+            h("div", { style: { fontWeight: 600, fontSize: 13, marginBottom: 8, color: "#7c8cf8" } }, "部"),
+            h("div", { className: "flex gap-8 mb-8" },
+              h("input", { className: "form-input", style: { maxWidth: 200 }, value: selNew, placeholder: "新しい部",
+                onChange: function(e) { setSelNew(e.target.value); },
+                onKeyDown: function(e) { if (e.key === "Enter") { addSelOpt("DEPARTMENTS", selNew); setSelNew(""); } }
+              }),
+              h("button", { className: "btn btn-primary btn-sm", onClick: function() { addSelOpt("DEPARTMENTS", selNew); setSelNew(""); } }, "追加")
+            ),
+            depts.map(function(dp) {
+              var isActive = selIndParent === dp.value;
+              var secs = selOpts.filter(function(o) { return o.category === 'SECTIONS' && o.parent === dp.value; });
+              return h("div", { key: dp.id, className: "master-item", style: { borderLeft: isActive ? "3px solid #7c8cf8" : "3px solid transparent", cursor: "pointer" },
+                onClick: function() { setSelIndParent(isActive ? "" : dp.value); }
+              },
+                h("span", { style: { fontWeight: 600, flex: 1 } }, dp.value),
+                h("span", { className: "text-xs text-muted", style: { marginRight: 8 } }, secs.length + "課"),
+                h("button", { className: "btn-icon btn-sm", style: { color: "#ef4444" },
+                  onClick: function(e) { e.stopPropagation(); delSelOpt(dp.id); }
+                }, "削除")
+              );
+            }),
+            selIndParent && selOpts.some(function(o) { return o.category === 'DEPARTMENTS' && o.value === selIndParent; }) && h("div", { style: { marginTop: 8, padding: 14, background: "#252836", borderRadius: 8, border: "1px solid #3d4163" } },
+              h("div", { style: { fontWeight: 600, fontSize: 13, marginBottom: 8, color: "#f97316" } }, selIndParent + " の課"),
+              h("div", { className: "flex gap-8 mb-8" },
+                h("input", { className: "form-input", style: { maxWidth: 200 }, value: selNewSub, placeholder: "新しい課",
+                  onChange: function(e) { setSelNewSub(e.target.value); },
+                  onKeyDown: function(e) { if (e.key === "Enter") { addSelOpt("SECTIONS", selNewSub, selIndParent); setSelNewSub(""); } }
+                }),
+                h("button", { className: "btn btn-primary btn-sm", onClick: function() { addSelOpt("SECTIONS", selNewSub, selIndParent); setSelNewSub(""); } }, "追加")
+              ),
+              selOpts.filter(function(o) { return o.category === 'SECTIONS' && o.parent === selIndParent; }).length === 0
+                ? h("div", { className: "text-muted text-sm" }, "課が未登録です")
+                : selOpts.filter(function(o) { return o.category === 'SECTIONS' && o.parent === selIndParent; }).map(function(s) {
+                    return h("div", { key: s.id, className: "master-item" },
+                      h("span", { style: { fontWeight: 600 } }, s.value),
+                      h("button", { className: "btn-icon btn-sm", style: { color: "#ef4444" }, onClick: function() { delSelOpt(s.id); } }, "削除")
+                    );
+                  })
+            )
+          );
+        })(),
+
+        // === 通常カテゴリ（一覧+追加+削除+ドラッグ並替） ===
+        selCat !== "CALL_LINK" && selCat !== "INDUSTRY_LINK" && selCat !== "DEPT_LINK" && (function() {
           var items = getItems(selCat);
+          var dragIdx = { current: null };
+          function handleDragStart(i) { dragIdx.current = i; }
+          function handleDrop(i) {
+            if (dragIdx.current === null || dragIdx.current === i) return;
+            var reordered = items.slice();
+            var moved = reordered.splice(dragIdx.current, 1)[0];
+            reordered.splice(i, 0, moved);
+            var updates = reordered.map(function(item, idx) { return { id: item.id, sortOrder: idx }; });
+            API.reorderSelectOptions(updates).then(function() { loadSelOpts(); });
+            dragIdx.current = null;
+          }
           return h("div", null,
             h("div", { className: "flex gap-8 mb-12" },
               h("input", { className: "form-input", style: { maxWidth: 250 }, value: selNew, placeholder: "新しい項目名",
@@ -409,9 +497,15 @@ function MasterPage({ plans, agents, creditCompanies, onReload }) {
             ),
             items.length === 0
               ? h("div", { className: "text-muted text-sm", style: { padding: 12 } }, "項目がありません。")
-              : items.map(function(item) {
-                  return h("div", { key: item.id, className: "master-item" },
-                    h("span", { style: { fontWeight: 600 } }, item.value),
+              : items.map(function(item, idx) {
+                  return h("div", { key: item.id, className: "master-item", draggable: true,
+                    onDragStart: function() { handleDragStart(idx); },
+                    onDragOver: function(e) { e.preventDefault(); },
+                    onDrop: function() { handleDrop(idx); },
+                    style: { cursor: "grab" }
+                  },
+                    h("span", { style: { color: "#64748b", fontSize: 10, marginRight: 8, cursor: "grab" } }, "⠿"),
+                    h("span", { style: { fontWeight: 600, flex: 1 } }, item.value),
                     h("button", { className: "btn-icon btn-sm", style: { color: "#ef4444" },
                       onClick: function() { delSelOpt(item.id); }
                     }, "削除")
