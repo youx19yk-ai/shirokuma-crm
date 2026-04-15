@@ -445,7 +445,22 @@ app.delete('/api/companies/:id', async (req, res) => {
 app.post('/api/companies/bulk', async (req, res) => {
   const companies = req.body;
   try {
+    // 既存電話番号を全取得して重複チェック用
+    const existingPhones = await pool.query('SELECT p.number, c.name as company_name FROM phone_numbers p JOIN companies c ON p.company_id = c.id');
+    const phoneMap = {};
+    existingPhones.rows.forEach(r => { phoneMap[r.number.replace(/[-\s]/g, '')] = r.company_name; });
+    const duplicates = [];
+    let imported = 0;
+
     for (const c of companies) {
+      // 電話番号重複チェック
+      if (c.tel) {
+        var cleanNum = c.tel.replace(/[-\s]/g, '');
+        if (phoneMap[cleanNum]) {
+          duplicates.push({ name: c.name, tel: c.tel, existingCompany: phoneMap[cleanNum] });
+          continue;
+        }
+      }
       const id = c.id || genId();
       await pool.query(`
         INSERT INTO companies (id, name, name_kana, corp_type, zip, prefecture, city, address, url, email,
@@ -455,8 +470,15 @@ app.post('/api/companies/bulk', async (req, res) => {
       `, [id, c.name||'', c.nameKana||'', c.corpType||'', c.zip||'', c.prefecture||'', c.city||'',
           c.address||'', c.url||'', c.email||'', c.representative||'', c.status||'見込み',
           c.industry||'', c.industryDetail||'', c.listCreatedDate||'', c.prospectOwner||'', c.memo||'']);
+      // 電話番号があれば追加
+      if (c.tel) {
+        await pool.query('INSERT INTO phone_numbers (id, company_id, number, type, label) VALUES ($1,$2,$3,$4,$5)',
+          [genId(), id, c.tel, '固定', '']);
+        phoneMap[c.tel.replace(/[-\s]/g, '')] = c.name;
+      }
+      imported++;
     }
-    res.json({ ok: true, count: companies.length });
+    res.json({ ok: true, count: imported, duplicates: duplicates });
   } catch (e) {
     console.error(e);
     res.status(500).json({ error: e.message });

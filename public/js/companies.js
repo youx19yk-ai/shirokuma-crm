@@ -174,12 +174,31 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
 
   // 行動編集保存
 
-  // 電話番号追加
+  // 電話番号追加（重複チェック付き）
+  var _dupWarn = useState(null), dupWarn = _dupWarn[0], setDupWarn = _dupWarn[1];
   var addPhone = function() {
     if (!phoneData.number) return;
+    // 重複チェック: 全企業の電話番号と照合
+    var num = phoneData.number.replace(/[-\s]/g, "");
+    var dup = null;
+    companies.forEach(function(c) {
+      if (c.id === selectedId) return;
+      (c.phones || []).forEach(function(p) {
+        if (p.number.replace(/[-\s]/g, "") === num) dup = c;
+      });
+    });
+    if (dup) {
+      setDupWarn(dup);
+      return;
+    }
     API.addPhone(selectedId, phoneData).then(function() {
-      setShowPhoneForm(false); setPhoneData({ number: "", type: "固定", label: "" }); onReload();
+      setShowPhoneForm(false); setPhoneData({ number: "", type: "固定", label: "" }); setDupWarn(null); onReload();
     }).catch(function(e) { alert("保存失敗: " + e.message); });
+  };
+  var forceAddPhone = function() {
+    API.addPhone(selectedId, phoneData).then(function() {
+      setShowPhoneForm(false); setPhoneData({ number: "", type: "固定", label: "" }); setDupWarn(null); onReload();
+    });
   };
 
   // 電話番号削除
@@ -201,9 +220,14 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
   // CSVインポート
   var importCSV = function(rows) {
     setSaving(true);
-    API.bulkImport(rows).then(function() {
+    API.bulkImport(rows).then(function(res) {
       setShowCsv(false); setSaving(false); onReload();
-      alert(rows.length + "件をインポートしました");
+      var msg = (res.count || rows.length) + "件をインポートしました";
+      if (res.duplicates && res.duplicates.length > 0) {
+        msg += "\n\n電話番号の重複でスキップ: " + res.duplicates.length + "件";
+        res.duplicates.forEach(function(d) { msg += "\n　" + d.name + "（" + d.tel + "）→ " + d.existingCompany + " に登録済み"; });
+      }
+      alert(msg);
     }).catch(function(e) { alert("インポート失敗: " + e.message); setSaving(false); });
   };
 
@@ -349,13 +373,20 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
           showPhoneForm && h("div", { style: { background: "#252836", borderRadius: 4, padding: 6, marginTop: 3 } },
             h("div", { className: "flex gap-4" },
               h("input", { className: "form-input", style: { padding: "2px 4px", fontSize: 11, width: 90 }, value: phoneData.number, placeholder: "番号",
-                onChange: function(e) { setPhoneData(Object.assign({}, phoneData, { number: toHalfWidth(e.target.value) })); },
+                onChange: function(e) { setPhoneData(Object.assign({}, phoneData, { number: toHalfWidth(e.target.value) })); setDupWarn(null); },
                 onKeyDown: function(e) { if (e.key === "Enter") addPhone(); } }),
               h("select", { className: "form-input", style: { padding: "2px 2px", fontSize: 10, width: 44 }, value: phoneData.type,
                 onChange: function(e) { setPhoneData(Object.assign({}, phoneData, { type: e.target.value })); } },
                 PHONE_TYPES.map(function(t) { return h("option", { key: t, value: t }, t); })
               ),
               h("button", { className: "btn btn-primary btn-sm", style: { padding: "1px 6px", fontSize: 10 }, onClick: addPhone }, "保存")
+            ),
+            dupWarn && h("div", { style: { marginTop: 4, padding: "4px 8px", background: "#3b1515", border: "1px solid #ef4444", borderRadius: 4, fontSize: 11 } },
+              h("div", { style: { color: "#ef4444", fontWeight: 600 } }, "この番号は「" + dupWarn.name + "」に登録済みです"),
+              h("div", { className: "flex gap-4", style: { marginTop: 4 } },
+                h("button", { className: "btn btn-danger btn-sm", style: { fontSize: 10, padding: "1px 8px" }, onClick: forceAddPhone }, "それでも追加"),
+                h("button", { className: "btn btn-ghost btn-sm", style: { fontSize: 10, padding: "1px 8px" }, onClick: function() { setDupWarn(null); } }, "やめる")
+              )
             )
           )
         ),
@@ -663,7 +694,19 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
       ),
       h("div", { style: { flex: 1 } }),
       h("button", { className: "btn btn-success btn-sm", onClick: function() { setShowCsv(true); } }, "CSV入力"),
-      h("button", { className: "btn btn-secondary btn-sm", onClick: function() { API.exportCSV(); } }, "CSV出力"),
+      h("button", { className: "btn btn-secondary btn-sm", onClick: function() {
+        var header = '企業名,カナ,法人格,都道府県,市区町村,住所,〒,電話番号,代表者,見込み分類,業種,小分類,見込み者,WEB,リスト作成日,次回コール,予定者,メール,備考';
+        var rows = filtered.map(function(c) {
+          var ph = (c.phones || []).map(function(p) { return p.number; }).join(";");
+          return [c.name, c.nameKana, c.corpType, c.prefecture, c.city, c.address, c.zip, ph,
+            c.representative, c.status, c.industry, c.industryDetail, c.prospectOwner, c.hasWeb,
+            c.listCreatedDate, c.nextCallDate, c.nextCallAgent, c.email, c.memo
+          ].map(function(v) { return '"' + (v || '').replace(/"/g, '""') + '"'; }).join(',');
+        });
+        var csv = '\uFEFF' + header + '\n' + rows.join('\n');
+        var b = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+        var a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'companies_' + todayStr() + '.csv'; a.click();
+      } }, "CSV出力（" + filtered.length + "件）"),
       h("button", { className: "btn btn-primary btn-sm", onClick: function() {
         setEditData({ name: "", nameKana: "", corpType: "", zip: "", prefecture: "", city: "", address: "", url: "", email: "", representative: "", status: "見込み", industry: "", industryDetail: "", listCreatedDate: "", nextCallDate: "", nextCallTime: "", nextCallMemo: "", nextCallAgent: "", prospectOwner: "", hasWeb: "", memo: "" });
         setView("newCompany");
