@@ -334,6 +334,7 @@ app.get('/api/companies', async (req, res) => {
     const urls = await pool.query('SELECT * FROM company_urls ORDER BY created_at');
     const acts = await pool.query('SELECT * FROM activities ORDER BY date DESC, created_at DESC');
     const dealRows = await pool.query('SELECT * FROM deals ORDER BY created_at DESC');
+    const chRows = await pool.query('SELECT ch.company_id, h.tag FROM company_hashtags ch JOIN hashtags h ON ch.hashtag_id = h.id');
 
     const companies = rows.map(c => ({
       id: c.id,
@@ -378,7 +379,8 @@ app.get('/api/companies', async (req, res) => {
         interviewDate: d.interview_date, deliveryDate: d.delivery_date,
         cost: d.cost, grossProfit: d.gross_profit, memo: d.memo
       })),
-      callCount: acts.rows.filter(a => a.company_id === c.id && a.type === 'コール').length
+      callCount: acts.rows.filter(a => a.company_id === c.id && a.type === 'コール').length,
+      hashtags: chRows.rows.filter(ch => ch.company_id === c.id).map(ch => ch.tag)
     }));
 
     res.json(companies);

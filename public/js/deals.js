@@ -84,7 +84,18 @@ function DealsPage({ agents, plans, creditCompanies, onNavigate, selectOptions }
           h("input", { type: "date", className: "search-input", value: reportFrom, onChange: function(e) { setReportFrom(e.target.value); } })),
         h("div", null, h("div", { className: "form-label" }, "To"),
           h("input", { type: "date", className: "search-input", value: reportTo, onChange: function(e) { setReportTo(e.target.value); } })),
-        h("button", { className: "btn btn-secondary btn-sm", onClick: showReport }, "個人レポート")
+        h("button", { className: "btn btn-secondary btn-sm", onClick: showReport }, "個人レポート"),
+        h("button", { className: "btn btn-secondary btn-sm", onClick: function() {
+          var header = '企業名,案件名,担当者,ステータス,契約日,契約額,原価,粗利,決済方法,信販会社,審査,取材日,納品日';
+          var csvRows = deals.map(function(d) {
+            return [d.companyName, d.title, d.agent, d.status, d.contractDate, d.contractAmount, d.cost, d.grossProfit,
+              d.paymentMethod, d.creditCompany, d.creditStatus, d.interviewDate, d.deliveryDate
+            ].map(function(v) { return '"' + (v == null ? '' : String(v)).replace(/"/g, '""') + '"'; }).join(',');
+          });
+          var csv = '\uFEFF' + header + '\n' + csvRows.join('\n');
+          var b = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+          var a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = 'deals_' + todayStr() + '.csv'; a.click();
+        } }, "売上CSV（" + deals.length + "件）")
       )
     ),
 

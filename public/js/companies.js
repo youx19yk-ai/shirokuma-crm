@@ -77,12 +77,8 @@ function CompaniesPage({ companies, selectedId, onSelect, onReload, agents, plan
     if (sq.visitResult && sq.visitResult.length > 0 && !(c.activities || []).some(function(a) { return sq.visitResult.indexOf(a.visitResult) >= 0; })) return false;
     // 案件
     if (sq.dealStatus && sq.dealStatus.length > 0 && !(c.deals || []).some(function(d) { return sq.dealStatus.indexOf(d.status) >= 0; })) return false;
-    // ハッシュタグ（タグ名で検索）
-    if (sq.hashtag && sq.hashtag !== "") {
-      var cTags = compTags; // 現在選択中の企業のタグ。全企業検索には別途サーバー対応が必要
-      // クライアントサイドではmemoにタグ文字列を含むかで代替
-      if (!(c.memo || "").includes(sq.hashtag)) return false;
-    }
+    // ハッシュタグ
+    if (sq.hashtag && sq.hashtag !== "" && !(c.hashtags || []).some(function(t) { return t === sq.hashtag; })) return false;
     return true;
   });
 
