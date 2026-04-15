@@ -115,6 +115,32 @@ function FormSelect({ label, options, value, onChange, placeholder }) {
   );
 }
 
+// 複数選択コンポーネント
+function FormMultiSelect({ label, options, value, onChange, placeholder }) {
+  var selected = value || [];
+  function toggle(v) {
+    var idx = selected.indexOf(v);
+    if (idx >= 0) { var n = selected.slice(); n.splice(idx, 1); onChange(n); }
+    else { onChange(selected.concat([v])); }
+  }
+  return h("div", { className: "form-group" },
+    label && h("label", { className: "form-label" }, label),
+    h("div", { style: { display: "flex", flexWrap: "wrap", gap: 3 } },
+      options.map(function(o) {
+        var val = typeof o === 'string' ? o : o.value;
+        var txt = typeof o === 'string' ? o : o.label;
+        var on = selected.indexOf(val) >= 0;
+        return h("button", { key: val, type: "button",
+          className: "btn btn-sm " + (on ? "btn-primary" : "btn-ghost"),
+          style: { padding: "2px 8px", fontSize: 10 },
+          onClick: function() { toggle(val); }
+        }, txt);
+      })
+    ),
+    selected.length > 0 && h("div", { style: { fontSize: 10, color: "#7c8cf8", marginTop: 2 } }, selected.length + "件選択中")
+  );
+}
+
 function InfoRow({ label, value, link, highlight }) {
   return h("div", { className: "field-box field-inline" },
     h("span", { className: "info-label-inline" }, label),
