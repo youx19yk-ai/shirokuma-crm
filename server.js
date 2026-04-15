@@ -296,13 +296,10 @@ async function initDB(retries = 10, delay = 3000) {
     }
   } catch(e) { console.error('セレクト項目投入エラー:', e.message); }
 
-  // 既存agentsにmember_id未設定のものがあれば自動採番
+  // 中川・小林のデフォルトメンバーID設定
   try {
-    const agentsWithoutId = await pool.query("SELECT id FROM agents WHERE member_id IS NULL OR member_id = ''");
-    for (let i = 0; i < agentsWithoutId.rows.length; i++) {
-      const mid = 'M' + String(Date.now()).slice(-6) + String(i + 1).padStart(2, '0');
-      await pool.query('UPDATE agents SET member_id=$1 WHERE id=$2', [mid, agentsWithoutId.rows[i].id]);
-    }
+    await pool.query("UPDATE agents SET member_id='0001' WHERE name='中川翔' AND (member_id IS NULL OR member_id = '' OR member_id LIKE 'M%')");
+    await pool.query("UPDATE agents SET member_id='0002' WHERE name='小林優人' AND (member_id IS NULL OR member_id = '' OR member_id LIKE 'M%')");
   } catch(e) {}
 
   // デフォルトハッシュタグ投入
@@ -1063,7 +1060,7 @@ app.get('/api/agents', async (req, res) => {
 app.post('/api/agents', async (req, res) => {
   const id = genId();
   const b = req.body;
-  const mid = 'M' + String(Date.now()).slice(-6) + String(Math.floor(Math.random()*90)+10);
+  const mid = b.memberId || '';
   try {
     await pool.query('INSERT INTO agents (id, name, team, department, section, role, member_id) VALUES ($1,$2,$3,$4,$5,$6,$7)',
       [id, b.name, b.team||'', b.department||'', b.section||'', b.role||'一般', mid]);
@@ -1074,8 +1071,8 @@ app.post('/api/agents', async (req, res) => {
 app.put('/api/agents/:id', async (req, res) => {
   const b = req.body;
   try {
-    await pool.query('UPDATE agents SET name=$1, team=$2, department=$3, section=$4, role=$5 WHERE id=$6',
-      [b.name, b.team||'', b.department||'', b.section||'', b.role||'一般', req.params.id]);
+    await pool.query('UPDATE agents SET name=$1, team=$2, department=$3, section=$4, role=$5, member_id=$6 WHERE id=$7',
+      [b.name, b.team||'', b.department||'', b.section||'', b.role||'一般', b.memberId||'', req.params.id]);
     res.json({ ok: true });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

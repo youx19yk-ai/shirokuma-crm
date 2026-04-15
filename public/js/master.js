@@ -112,10 +112,11 @@ function MasterPage({ plans, agents, creditCompanies, onReload }) {
   var _adept = useState(""), agentDept = _adept[0], setAgentDept = _adept[1];
   var _asec = useState(""), agentSec = _asec[0], setAgentSec = _asec[1];
   var _arole = useState("一般"), agentRole = _arole[0], setAgentRole = _arole[1];
+  var _amid = useState(""), agentMid = _amid[0], setAgentMid = _amid[1];
   var addAgent = function() {
     if (!agentName) return;
-    API.createAgent({ name: agentName, team: agentTeam, department: agentDept, section: agentSec, role: agentRole }).then(function() {
-      setAgentName(""); setAgentTeam(""); setAgentDept(""); setAgentSec(""); setAgentRole("一般"); onReload();
+    API.createAgent({ name: agentName, team: agentTeam, department: agentDept, section: agentSec, role: agentRole, memberId: agentMid }).then(function() {
+      setAgentName(""); setAgentTeam(""); setAgentDept(""); setAgentSec(""); setAgentRole("一般"); setAgentMid(""); onReload();
     });
   };
   var deleteAgent = function(id) { API.deleteAgent(id).then(function() { onReload(); }); };
@@ -203,6 +204,8 @@ function MasterPage({ plans, agents, creditCompanies, onReload }) {
       ),
       h("div", { style: { background: "#252836", borderRadius: 8, padding: 14, marginBottom: 14, border: "1px solid #3d4163" } },
         h("div", { className: "flex gap-8", style: { flexWrap: "wrap", alignItems: "end" } },
+          h("div", null, h("div", { className: "form-label" }, "ID"), h("input", { className: "form-input", style: { width: 70 }, value: agentMid, placeholder: "0003",
+            onChange: function(e) { setAgentMid(toHalfWidth(e.target.value)); } })),
           h("div", null, h("div", { className: "form-label" }, "名前"), h("input", { className: "form-input", style: { width: 120 }, value: agentName, placeholder: "氏名",
             onChange: function(e) { setAgentName(e.target.value); } })),
           h("div", null, h("div", { className: "form-label" }, "部"), h("select", { className: "form-input", style: { width: 100 }, value: agentDept,
@@ -225,22 +228,32 @@ function MasterPage({ plans, agents, creditCompanies, onReload }) {
         : h("table", { className: "table" },
             h("thead", null, h("tr", null, ["ID","名前","部","課","役職","操作"].map(function(th) { return h("th", { key: th }, th); }))),
             h("tbody", null, agents.map(function(a) {
+              var ua = function(field, val) {
+                var d = { name: a.name, team: a.team, department: a.department, section: a.section, role: a.role, memberId: a.memberId };
+                d[field] = val;
+                if (field === "department") d.section = "";
+                API.updateAgent(a.id, d).then(function() { onReload(); });
+              };
               return h("tr", { key: a.id, style: { cursor: "default" } },
-                h("td", { className: "text-muted", style: { fontSize: 11 } }, a.memberId || "―"),
+                h("td", null,
+                  h("input", { className: "form-input", style: { padding: "2px 4px", fontSize: 11, width: 55, textAlign: "center" }, value: a.memberId || "",
+                    onChange: function(e) { ua("memberId", toHalfWidth(e.target.value)); }
+                  })
+                ),
                 h("td", { style: { fontWeight: 600 } }, a.name),
                 h("td", null,
                   h("select", { className: "form-input", style: { padding: "2px 4px", fontSize: 11, width: 80 }, value: a.department || "",
-                    onChange: function(e) { API.updateAgent(a.id, { name: a.name, team: a.team, department: e.target.value, section: "", role: a.role }).then(function() { onReload(); }); }
+                    onChange: function(e) { ua("department", e.target.value); }
                   }, h("option", { value: "" }, "―"), getDepts().map(function(d) { return h("option", { key: d, value: d }, d); }))
                 ),
                 h("td", null,
                   h("select", { className: "form-input", style: { padding: "2px 4px", fontSize: 11, width: 80 }, value: a.section || "",
-                    onChange: function(e) { API.updateAgent(a.id, { name: a.name, team: a.team, department: a.department, section: e.target.value, role: a.role }).then(function() { onReload(); }); }
+                    onChange: function(e) { ua("section", e.target.value); }
                   }, h("option", { value: "" }, "―"), getSections(a.department).map(function(s) { return h("option", { key: s, value: s }, s); }))
                 ),
                 h("td", null,
                   h("select", { className: "form-input", style: { padding: "2px 4px", fontSize: 11, width: 70 }, value: a.role || "一般",
-                    onChange: function(e) { API.updateAgent(a.id, { name: a.name, team: a.team, department: a.department, section: a.section, role: e.target.value }).then(function() { onReload(); }); }
+                    onChange: function(e) { ua("role", e.target.value); }
                   }, getRoles().map(function(r) { return h("option", { key: r, value: r }, r); }))
                 ),
                 h("td", null, h("button", { className: "btn-icon btn-sm", style: { color: "#ef4444" }, onClick: function() { deleteAgent(a.id); } }, "削除"))
