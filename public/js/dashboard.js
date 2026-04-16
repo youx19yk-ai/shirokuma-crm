@@ -140,12 +140,14 @@ function DashboardPage(_props) {
       var o = {};
       ['totalProfit','totalAmount','contractCount','completedDeals','selfAppoCount','assignedAppoCount','visitCount','selfVisitCount','appoCount','proposalCount','decisionCount','contactCount','callCount'].forEach(function(f) { o[f] = sumField(tarr, f); });
       o.avgProfit = o.contractCount > 0 ? Math.round(o.totalProfit / o.contractCount) : 0;
-      o.contractRate = o.appoCount > 0 ? Math.round(o.contractCount / o.appoCount * 100) : 0;
+      o.contractRate = o.visitCount > 0 ? Math.round(tarr.reduce(function(s, a) { return s + (a.contractRate || 0) * (a.visitCount || 0) / 100; }, 0) / o.visitCount * 100) : 0; // 契約率 = 契約訪問 ÷ 訪問数
       o.completionRate = o.contractCount > 0 ? Math.round(o.completedDeals / o.contractCount * 100) : 0;
-      o.visitRate = o.appoCount > 0 ? Math.round(o.visitCount / o.appoCount * 100) : 0;
-      o.appoRate = o.callCount > 0 ? Math.round(o.appoCount / o.callCount * 1000) / 10 : 0;
-      o.proposalRate = o.callCount > 0 ? Math.round(o.proposalCount / o.callCount * 1000) / 10 : 0;
-      o.decisionRate = o.callCount > 0 ? Math.round(o.decisionCount / o.callCount * 1000) / 10 : 0;
+      o.visitRate = o.appoCount > 0 ? Math.round(o.visitCount / o.appoCount * 100) : 0; // 行動率 = 訪問実施 ÷ アポ獲得
+      // 決裁者通話数をcallTypeRatesから逆算
+      var teamKessai = tarr.reduce(function(s, a) { return s + ((a.callTypeRates && a.callTypeRates["決済通話"]) || 0) * (a.callCount || 0) / 100; }, 0);
+      o.appoRate = teamKessai > 0 ? Math.round(o.appoCount / teamKessai * 100) : 0; // アポ率 = アポ数 ÷ 決裁者通話数
+      o.proposalRate = o.contactCount > 0 ? Math.round(o.proposalCount / o.contactCount * 100) : 0; // 提案完了率 ÷ 接触数
+      o.decisionRate = o.contactCount > 0 ? Math.round(o.decisionCount / o.contactCount * 100) : 0; // 決裁率 ÷ 接触数
       o.callTypeRates = {};
       ['アポ','決済通話','担当者通話','受付通話','不通','提案完了','決裁','コールのみ'].forEach(function(ct) {
         var s = tarr.reduce(function(ss, a) { return ss + ((a.callTypeRates && a.callTypeRates[ct]) || 0) * (a.callCount || 0) / 100; }, 0);

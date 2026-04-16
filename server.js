@@ -903,11 +903,12 @@ app.get('/api/dashboard/kpi', async (req, res) => {
       const completedDeals = myDeals.filter(d => ['納品完了','入金予定','入金済み'].includes(d.status)).length;
 
       // 歩留まり率
-      const contractRate = appoCount > 0 ? Math.round((contractVisits / appoCount) * 100) : 0;
-      const visitRate = appoCount > 0 ? Math.round((visitCount / appoCount) * 100) : 0;
-      const appoRate = callCount > 0 ? Math.round((appoCount / callCount) * 100) : 0;
-      const proposalRate = callCount > 0 ? Math.round((proposalCount / callCount) * 100) : 0;
-      const decisionRate = callCount > 0 ? Math.round((decisionCount / callCount) * 100) : 0;
+      const contractRate = visitCount > 0 ? Math.round((contractVisits / visitCount) * 100) : 0;  // 契約率 = 契約訪問 ÷ 訪問数
+      const visitRate = appoCount > 0 ? Math.round((visitCount / appoCount) * 100) : 0;           // 行動率 = 訪問実施 ÷ アポ獲得
+      const kessaiCallCount = myCalls.filter(a => a.call_type === '決済通話').length;
+      const appoRate = kessaiCallCount > 0 ? Math.round((appoCount / kessaiCallCount) * 100) : 0;     // アポ率 = アポ数 ÷ 決裁者通話数
+      const proposalRate = contactCount > 0 ? Math.round((proposalCount / contactCount) * 100) : 0;   // 提案完了率 = 提案完了 ÷ 接触数
+      const decisionRate = contactCount > 0 ? Math.round((decisionCount / contactCount) * 100) : 0;   // 決裁率 = 決裁 ÷ 接触数
       const completionRate = contractCount > 0 ? Math.round((completedDeals / contractCount) * 100) : 0;
 
       // 各通話率
