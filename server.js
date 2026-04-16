@@ -884,9 +884,11 @@ app.get('/api/dashboard/kpi', async (req, res) => {
       const appoResults = myCalls.filter(a => ['新規アポ','再訪アポ','クロスセルアポ','アップセルアポ','担当者アポ','来週アポ'].includes(a.call_result));
       const appoCount = appoResults.length;
 
-      // 自己アポ（アポ者=自分）vs 振りアポ
-      const selfAppoCount = myVisits.filter(v => v.appointer === name).length;
-      const assignedAppoCount = myVisits.filter(v => v.appointer && v.appointer !== name).length;
+      // 自己アポ vs 振りアポ
+      const selfAppoVisits = myVisits.filter(v => v.appointer === name);           // 自分がアポ取った訪問
+      const selfAppoCount = selfAppoVisits.length;                                  // 自己アポ数
+      const selfAppoContractCount = selfAppoVisits.filter(v => v.visit_result === '契約').length; // 自己アポ契約数
+      const assignedAppoCount = myVisits.filter(v => v.appointer && v.appointer !== name).length; // 振りアポ数
 
       // 行動数（訪問実施）
       const visitCount = myVisits.length;
@@ -929,6 +931,7 @@ app.get('/api/dashboard/kpi', async (req, res) => {
         // KPI量
         contractCount,
         completedDeals,
+        selfAppoContractCount,
         selfAppoCount,
         assignedAppoCount,
         visitCount,

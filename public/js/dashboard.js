@@ -138,7 +138,7 @@ function DashboardPage(_props) {
     function makeTeamTotal(tarr) {
       var tc = tarr.length;
       var o = {};
-      ['totalProfit','totalAmount','contractCount','completedDeals','selfAppoCount','assignedAppoCount','visitCount','selfVisitCount','appoCount','proposalCount','decisionCount','contactCount','callCount'].forEach(function(f) { o[f] = sumField(tarr, f); });
+      ['totalProfit','totalAmount','contractCount','completedDeals','selfAppoContractCount','selfAppoCount','assignedAppoCount','visitCount','selfVisitCount','appoCount','proposalCount','decisionCount','contactCount','callCount'].forEach(function(f) { o[f] = sumField(tarr, f); });
       o.avgProfit = o.contractCount > 0 ? Math.round(o.totalProfit / o.contractCount) : 0;
       o.contractRate = o.visitCount > 0 ? Math.round(tarr.reduce(function(s, a) { return s + (a.contractRate || 0) * (a.visitCount || 0) / 100; }, 0) / o.visitCount * 100) : 0; // 契約率 = 契約訪問 ÷ 訪問数
       o.completionRate = o.contractCount > 0 ? Math.round(o.completedDeals / o.contractCount * 100) : 0;
@@ -188,7 +188,7 @@ function DashboardPage(_props) {
     addSH("KPI量");
     addRow("kpi_done", "完了数", function(c) { return c.d.completedDeals || 0; }, null, "vg");
     addRow("kpi_cont", "契約数", function(c) { return c.d.contractCount || 0; }, null, "vg");
-    addRow("kpi_selfac", "自己アポ契約", function(c) { return c.d.selfAppoCount || 0; }, null, "v");
+    addRow("kpi_selfac", "自己アポ契約", function(c) { return c.d.selfAppoContractCount || 0; }, null, "v");
     addRow("kpi_selfap", "自己アポ数", function(c) { return c.d.selfAppoCount || 0; }, null, "v");
     addRow("kpi_assign", "振りアポ数", function(c) { return c.d.assignedAppoCount || 0; }, null, "v");
     addRow("kpi_visit", "総行動数", function(c) { return c.d.visitCount || 0; }, null, "v");
