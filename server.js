@@ -2,9 +2,45 @@ const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
 const path = require('path');
+const rateLimit = require('express-rate-limit');
+const basicAuth = require('express-basic-auth');
 
 const app = express();
-app.use(cors());
+const isProd = process.env.NODE_ENV === 'production';
+
+// 本番でDBエラーの詳細を外部に漏らさないためのヘルパー
+const prodErr = (e) => (isProd ? 'サーバーエラーが発生しました' : e.message);
+
+// --- CORS: 本番は本番URLのみ許可、開発は全許可 ---
+const ALLOWED_ORIGIN = 'https://crm-app-szv6.onrender.com';
+app.use(cors(isProd ? { origin: ALLOWED_ORIGIN } : {}));
+
+// --- レート制限: 1分あたり300リクエストまで（総当たり・スクレイピング対策） ---
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 300,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+app.use('/api', apiLimiter);
+
+// --- Basic認証: 画面・API両方を保護（社内2名想定） ---
+// ID/PWはRenderの環境変数(BASIC_AUTH_USER / BASIC_AUTH_PASS)で設定する
+const AUTH_USER = process.env.BASIC_AUTH_USER || 'admin';
+const AUTH_PASS = process.env.BASIC_AUTH_PASS || 'changeme';
+if (isProd && (!process.env.BASIC_AUTH_USER || !process.env.BASIC_AUTH_PASS)) {
+  console.warn('⚠️  BASIC_AUTH_USER / BASIC_AUTH_PASS が未設定です。Renderの環境変数で必ず設定してください（現在は admin/changeme の仮パスワードで動作中）。');
+}
+const authMiddleware = basicAuth({
+  users: { [AUTH_USER]: AUTH_PASS },
+  challenge: true,
+  realm: 'ShirokumaCRM',
+});
+app.use((req, res, next) => {
+  if (req.path === '/api/health') return next(); // ヘルスチェックのみ認証不要
+  return authMiddleware(req, res, next);
+});
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -386,7 +422,7 @@ app.get('/api/companies', async (req, res) => {
     res.json(companies);
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: prodErr(e) });
   }
 });
 
@@ -406,7 +442,7 @@ app.post('/api/companies', async (req, res) => {
     res.json({ id });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: prodErr(e) });
   }
 });
 
@@ -428,7 +464,7 @@ app.put('/api/companies/:id', async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: prodErr(e) });
   }
 });
 
@@ -439,7 +475,7 @@ app.delete('/api/companies/:id', async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: prodErr(e) });
   }
 });
 
@@ -483,7 +519,7 @@ app.post('/api/companies/bulk', async (req, res) => {
     res.json({ ok: true, count: imported, duplicates: duplicates });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: prodErr(e) });
   }
 });
 
@@ -506,7 +542,7 @@ app.get('/api/companies/export', async (req, res) => {
     res.send(csv);
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: prodErr(e) });
   }
 });
 
@@ -525,7 +561,7 @@ app.post('/api/companies/:id/phones', async (req, res) => {
     res.json({ id });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: prodErr(e) });
   }
 });
 
@@ -539,7 +575,7 @@ app.put('/api/phones/:id', async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: prodErr(e) });
   }
 });
 
@@ -549,7 +585,7 @@ app.delete('/api/phones/:id', async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: prodErr(e) });
   }
 });
 
@@ -565,7 +601,7 @@ app.get('/api/phones/search', async (req, res) => {
     res.json(rows);
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: prodErr(e) });
   }
 });
 
@@ -576,18 +612,18 @@ app.post('/api/companies/:id/urls', async (req, res) => {
   try {
     await pool.query('INSERT INTO company_urls (id, company_id, url, type) VALUES ($1,$2,$3,$4)', [id, req.params.id, u.url||'', u.type||'']);
     res.json({ id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: prodErr(e) }); }
 });
 app.put('/api/urls/:id', async (req, res) => {
   const u = req.body;
   try {
     await pool.query('UPDATE company_urls SET url=$1, type=$2 WHERE id=$3', [u.url||'', u.type||'', req.params.id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: prodErr(e) }); }
 });
 app.delete('/api/urls/:id', async (req, res) => {
   try { await pool.query('DELETE FROM company_urls WHERE id=$1', [req.params.id]); res.json({ ok: true }); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  catch (e) { res.status(500).json({ error: prodErr(e) }); }
 });
 
 // 営業行動 API
@@ -605,7 +641,7 @@ app.get('/api/companies/:id/activities', async (req, res) => {
     })));
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: prodErr(e) });
   }
 });
 
@@ -630,7 +666,7 @@ app.post('/api/companies/:id/activities', async (req, res) => {
     res.json({ id });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: prodErr(e) });
   }
 });
 
@@ -646,7 +682,7 @@ app.put('/api/activities/:id', async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: prodErr(e) });
   }
 });
 
@@ -656,7 +692,7 @@ app.delete('/api/activities/:id', async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: prodErr(e) });
   }
 });
 
@@ -694,7 +730,7 @@ app.get('/api/deals', async (req, res) => {
     })));
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: prodErr(e) });
   }
 });
 
@@ -714,7 +750,7 @@ app.get('/api/companies/:id/deals', async (req, res) => {
     })));
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: prodErr(e) });
   }
 });
 
@@ -741,7 +777,7 @@ app.post('/api/deals', async (req, res) => {
     res.json({ id });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: prodErr(e) });
   }
 });
 
@@ -763,7 +799,7 @@ app.put('/api/deals/:id', async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: prodErr(e) });
   }
 });
 
@@ -773,7 +809,7 @@ app.delete('/api/deals/:id', async (req, res) => {
     res.json({ ok: true });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: prodErr(e) });
   }
 });
 
@@ -837,7 +873,7 @@ app.get('/api/dashboard/stats', async (req, res) => {
     });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: prodErr(e) });
   }
 });
 
@@ -974,7 +1010,7 @@ app.get('/api/dashboard/kpi', async (req, res) => {
     res.json({ agents: agentKpis, totals, period: { from: dateFrom, to: dateTo } });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: prodErr(e) });
   }
 });
 
@@ -988,7 +1024,7 @@ app.get('/api/dashboard/daily-calls', async (req, res) => {
     res.json(rows);
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: prodErr(e) });
   }
 });
 
@@ -1031,7 +1067,7 @@ app.get('/api/calendar/:year/:month', async (req, res) => {
     res.json({ calls, visits, deals });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: prodErr(e) });
   }
 });
 
@@ -1044,7 +1080,7 @@ app.get('/api/plans', async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM plans ORDER BY sort_order, created_at');
     res.json(rows.map(p => ({ id: p.id, name: p.name, category: p.category, price: p.price, description: p.description, active: p.active, sortOrder: p.sort_order })));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: prodErr(e) }); }
 });
 
 app.post('/api/plans', async (req, res) => {
@@ -1056,7 +1092,7 @@ app.post('/api/plans', async (req, res) => {
       [id, p.name, p.category||'', p.price||0, p.description||'', p.active !== false, p.sortOrder||0]
     );
     res.json({ id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: prodErr(e) }); }
 });
 
 app.put('/api/plans/:id', async (req, res) => {
@@ -1067,14 +1103,14 @@ app.put('/api/plans/:id', async (req, res) => {
       [p.name, p.category||'', p.price||0, p.description||'', p.active !== false, p.sortOrder||0, req.params.id]
     );
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: prodErr(e) }); }
 });
 
 app.delete('/api/plans/:id', async (req, res) => {
   try {
     await pool.query('DELETE FROM plans WHERE id=$1', [req.params.id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: prodErr(e) }); }
 });
 
 // 担当者マスタ
@@ -1082,7 +1118,7 @@ app.get('/api/agents', async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM agents ORDER BY department, section, created_at');
     res.json(rows.map(a => ({ id: a.id, name: a.name, team: a.team || '', department: a.department || '', section: a.section || '', role: a.role || '一般', memberId: a.member_id || '' })));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: prodErr(e) }); }
 });
 
 app.post('/api/agents', async (req, res) => {
@@ -1093,7 +1129,7 @@ app.post('/api/agents', async (req, res) => {
     await pool.query('INSERT INTO agents (id, name, team, department, section, role, member_id) VALUES ($1,$2,$3,$4,$5,$6,$7)',
       [id, b.name, b.team||'', b.department||'', b.section||'', b.role||'一般', mid]);
     res.json({ id, memberId: mid });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: prodErr(e) }); }
 });
 
 app.put('/api/agents/:id', async (req, res) => {
@@ -1102,13 +1138,13 @@ app.put('/api/agents/:id', async (req, res) => {
     await pool.query('UPDATE agents SET name=$1, team=$2, department=$3, section=$4, role=$5, member_id=$6 WHERE id=$7',
       [b.name, b.team||'', b.department||'', b.section||'', b.role||'一般', b.memberId||'', req.params.id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: prodErr(e) }); }
 });
 app.delete('/api/agents/:id', async (req, res) => {
   try {
     await pool.query('DELETE FROM agents WHERE id=$1', [req.params.id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: prodErr(e) }); }
 });
 
 // 信販会社マスタ
@@ -1116,7 +1152,7 @@ app.get('/api/credit-companies', async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM credit_companies ORDER BY created_at');
     res.json(rows);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: prodErr(e) }); }
 });
 
 app.post('/api/credit-companies', async (req, res) => {
@@ -1124,14 +1160,14 @@ app.post('/api/credit-companies', async (req, res) => {
   try {
     await pool.query('INSERT INTO credit_companies (id, name) VALUES ($1, $2)', [id, req.body.name]);
     res.json({ id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: prodErr(e) }); }
 });
 
 app.delete('/api/credit-companies/:id', async (req, res) => {
   try {
     await pool.query('DELETE FROM credit_companies WHERE id=$1', [req.params.id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: prodErr(e) }); }
 });
 
 // ============================================================
@@ -1140,7 +1176,7 @@ app.get('/api/targets', async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM targets ORDER BY year_month DESC, agent');
     res.json(rows.map(t => ({ id: t.id, agent: t.agent, yearMonth: t.year_month, grossProfitTarget: t.gross_profit_target, contractTarget: t.contract_target })));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: prodErr(e) }); }
 });
 app.post('/api/targets', async (req, res) => {
   const t = req.body; const id = genId();
@@ -1148,7 +1184,7 @@ app.post('/api/targets', async (req, res) => {
     await pool.query('INSERT INTO targets (id, agent, year_month, gross_profit_target, contract_target) VALUES ($1,$2,$3,$4,$5)',
       [id, t.agent, t.yearMonth, t.grossProfitTarget||0, t.contractTarget||0]);
     res.json({ id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: prodErr(e) }); }
 });
 app.put('/api/targets/:id', async (req, res) => {
   const t = req.body;
@@ -1156,11 +1192,11 @@ app.put('/api/targets/:id', async (req, res) => {
     await pool.query('UPDATE targets SET agent=$1, year_month=$2, gross_profit_target=$3, contract_target=$4 WHERE id=$5',
       [t.agent, t.yearMonth, t.grossProfitTarget||0, t.contractTarget||0, req.params.id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: prodErr(e) }); }
 });
 app.delete('/api/targets/:id', async (req, res) => {
   try { await pool.query('DELETE FROM targets WHERE id=$1', [req.params.id]); res.json({ ok: true }); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  catch (e) { res.status(500).json({ error: prodErr(e) }); }
 });
 
 // セレクト項目管理 API
@@ -1169,18 +1205,18 @@ app.get('/api/select-options', async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM select_options ORDER BY category, sort_order, created_at');
     res.json(rows.map(r => ({ id: r.id, category: r.category, value: r.value, parent: r.parent || '', sortOrder: r.sort_order, active: r.active })));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: prodErr(e) }); }
 });
 app.post('/api/select-options', async (req, res) => {
   const { category, value, parent } = req.body; const id = genId();
   try {
     await pool.query('INSERT INTO select_options (id, category, value, parent) VALUES ($1,$2,$3,$4)', [id, category, value, parent || '']);
     res.json({ id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: prodErr(e) }); }
 });
 app.delete('/api/select-options/:id', async (req, res) => {
   try { await pool.query('DELETE FROM select_options WHERE id=$1', [req.params.id]); res.json({ ok: true }); }
-  catch (e) { res.status(500).json({ error: e.message }); }
+  catch (e) { res.status(500).json({ error: prodErr(e) }); }
 });
 // 並び替え
 app.put('/api/select-options/reorder', async (req, res) => {
@@ -1190,7 +1226,7 @@ app.put('/api/select-options/reorder', async (req, res) => {
       await pool.query('UPDATE select_options SET sort_order=$1 WHERE id=$2', [item.sortOrder, item.id]);
     }
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: prodErr(e) }); }
 });
 // デフォルト項目一括投入
 app.post('/api/select-options/seed-defaults', async (req, res) => {
@@ -1236,7 +1272,7 @@ app.post('/api/select-options/seed-defaults', async (req, res) => {
       }
     }
     res.json({ ok: true, inserted: count });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: prodErr(e) }); }
 });
 
 // ハッシュタグ API
@@ -1245,14 +1281,14 @@ app.get('/api/hashtags', async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM hashtags ORDER BY tag');
     res.json(rows.map(h => ({ id: h.id, tag: h.tag })));
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: prodErr(e) }); }
 });
 app.post('/api/hashtags', async (req, res) => {
   const id = genId();
   try {
     await pool.query('INSERT INTO hashtags (id, tag) VALUES ($1, $2) ON CONFLICT (tag) DO NOTHING', [id, req.body.tag]);
     res.json({ id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: prodErr(e) }); }
 });
 app.get('/api/companies/:id/hashtags', async (req, res) => {
   try {
@@ -1261,7 +1297,7 @@ app.get('/api/companies/:id/hashtags', async (req, res) => {
       [req.params.id]
     );
     res.json(rows);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: prodErr(e) }); }
 });
 app.post('/api/companies/:id/hashtags', async (req, res) => {
   const cid = req.params.id;
@@ -1282,13 +1318,13 @@ app.post('/api/companies/:id/hashtags', async (req, res) => {
       await pool.query('INSERT INTO company_hashtags (id, company_id, hashtag_id) VALUES ($1, $2, $3)', [genId(), cid, htId]);
     }
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: prodErr(e) }); }
 });
 app.delete('/api/companies/:companyId/hashtags/:hashtagId', async (req, res) => {
   try {
     await pool.query('DELETE FROM company_hashtags WHERE company_id=$1 AND hashtag_id=$2', [req.params.companyId, req.params.hashtagId]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: prodErr(e) }); }
 });
 
 // 検索条件 API
@@ -1298,7 +1334,7 @@ app.get('/api/filters', async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM saved_filters ORDER BY created_at DESC');
     res.json(rows);
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: prodErr(e) }); }
 });
 
 app.post('/api/filters', async (req, res) => {
@@ -1309,14 +1345,14 @@ app.post('/api/filters', async (req, res) => {
       [id, req.body.name, JSON.stringify(req.body.filters)]
     );
     res.json({ id });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: prodErr(e) }); }
 });
 
 app.delete('/api/filters/:id', async (req, res) => {
   try {
     await pool.query('DELETE FROM saved_filters WHERE id=$1', [req.params.id]);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) { res.status(500).json({ error: prodErr(e) }); }
 });
 
 // ============================================================
@@ -1509,7 +1545,7 @@ app.post('/api/seed', async (req, res) => {
     res.json({ ok: true, message: 'ダミーデータ投入完了（5名・2-4月）' });
   } catch (e) {
     console.error(e);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ error: prodErr(e) });
   }
 });
 
